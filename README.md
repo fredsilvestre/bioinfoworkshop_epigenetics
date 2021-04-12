@@ -10,7 +10,7 @@ The students should be familiar with RStudio environment and basic functions and
 
 # Part1:
 
-- setup of RStudio environment; setup of Bioconductor; installing packages; creating a RMarkdown document
+- setup of RStudio environment; setup of Bioconductor; installing packages; creating a RMarkdown document and a github account
 - working with sequences
   * DNAstring and DNAstringSet objects
 - working with set of genes
