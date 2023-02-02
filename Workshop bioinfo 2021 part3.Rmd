@@ -1,35 +1,63 @@
 ---
-title: "DNA methylation workflow workshop2021"
-author: "Me"
-date: "1/7/2021"
+title: "DNA methylation workflow - workshop 2023 part3"
+author: "Frederic Silvestre"
+date: "17/1/2023"
 output: html_document
 ---
 
+This part3 of the DNA methylation workflow aims to work on real RAW data obtained after RRBS bisulfite sequencing using an Ilumina sequencer. The data consists in 6 libraries of mangrove rivulus brain sampled in 2019 in two wild population: EPP (Emerson Point Preserve in Florida ; TC (Twin Cayes in Belize).
+
+ID of fish from Twin Caye: Brain2, 3, 4
+ID of fish from EPP: ID Brain69, 71, 73
+
+The RAW files are in the file "fastq" with the name "Brain2.fastq.gz"
+
+For the scientific background, see the presentation.
+
+
+
+# 0° Preparation of the working environment
+
+## General setup of RMarkdown chunks and common shortcuts (for MacOS)
+
 ```{r setup}
-knitr::opts_chunk$set(echo = TRUE, include=TRUE, cache=TRUE, results="hide", warning=FALSE, error=TRUE, eval=FALSE)
+if(!requireNamespace("knitr", quietly=TRUE))
+        install.packages("knitr")
+library(knitr)
+if(!requireNamespace("rmarkdown", quietly=TRUE))
+        install.packages("rmarkdown")
+library(rmarkdown)
+
+knitr::opts_chunk$set(eval=F, results="hide", echo = TRUE, include=TRUE, warning=TRUE, error=TRUE)
 ```
 
-Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results)
-Option/Command I to create a chunk
-Shift/option ( to [
-Option ( to {
-| shift/option L
-~ option n
+Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
+Option/Command I to create a chunk  
+Shift/option ( to [  
+Option ( to {  
+| shift/option L  
+~ option n  
+double space to change the paragraph  
+to open /var folder > command + shift + G (write /var)  
 
+## Set working directory 
 
-#set working directory 
-
-```{r}
+```{r eval=T}
 getwd()
-setwd("~/methylome")
+setwd("*****") # adapt to your computer
 ls()
 rm(list = ls())
-tempdir() #save all the data from R
-#to open /var folder > command + shift + G (write /var)
-```
-#install R v4 and R studio v 1.4
+tempdir() #where to save all the data from R
+dev.off() #to reset the graph device options
+sessionInfo()
 
-# install Bioconductor 3.12
+```
+
+## Install R v4.2 and update RStudio
+
+
+## Install Bioconductor 3.16 and requested packages
+
 Bioconductor: https://www.bioconductor.org/
 search for available packages: https://www.bioconductor.org/packages/release/BiocViews.html#___Software
 
@@ -39,122 +67,121 @@ BiocManager::version()
 
 if(!requireNamespace("BiocManager", quietly=TRUE))
         install.packages("BiocManager")
-BiocManager::install(version="3.12")
+BiocManager::install(version="3.16")
 
 library(BiocManager)
 
 #To check the number of packages available in Bioconductor
 avail <- BiocManager::available()
 length(avail)
-avail
+
 #update your packages
 BiocManager::install()
 
+install.packages("stringi",type="mac.binary") #if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
+library(stringi)
+
+if(!requireNamespace("pacman", quietly=TRUE)) #the package pacman allows to install and load several packages from Cran at once if they're not installed.
+        install.packages("pacman")
+library(pacman)
+
+BiocManager::install(c("Rqc", "methylKit", "ShortRead", "QuasR"))
+pacman::p_load(Rqc, methylKit, ShortRead, QuasR, remotes, factoextra)
+
+BiocManager::install("methylKit", force=T) # if it does not work
+
 ```
 
-#To obtain help
+## To obtain help
 
 ```{r}
+
 ?mean
 help.start()
-sessionInfo()
-help(package = "Biobase")
-vignette(package="Biobase")
-vignette("ExpressionSetIntroduction")
-browseVignettes(package="Biobase")
+help(package = "methylKit")
+vignette("methylKit")
+browseVignettes("methylKit")
+
 ```
 
-
+## To save and load R objects
 
 ```{r}
 
-#pacman package to install and load packages automatically 
-if(!require(pacman)){install.packages("pacman");require(pacman)}
-
-if(!require(c("Rqc", "methylKit", "ShortRead", "QuasR"))){
-BiocManager::install(c("Rqc", "methylKit", "ShortRead", "QuasR"))}
-
-p_load(Rqc, methylKit, ShortRead, QuasR)
-
-
-
-if(!require("remotes")){
-    install.packages("remotes")
-    library(remotes)
-}
+saveRDS(tiles, file="tiles1.RDS")
+b <- readRDS("tiles1.RDS")
 
 ```
 
 
-# To write and read R object in RDS format in the wd
 
-```{r}
-saveRDS(myobj, file="myobj.RDS")
-b <- readRDS("myobj.RDS")
-```
-
-
-#1° Quality check
+# 1° Quality check
 
 Working with FastQ files
-In the terminal we can see the file with the 4 lines
+Usually, we work with FastQC app or multi FASTQC (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).
 
-zless name.fastq.gz | head
+![Phred values](images/Phred.png)
+
+![FASTQ sequence](images/Phred2.png)
+
 
 ```{r}
 
-folder <- system.file(package="ShortRead", "extdata/E-MTAB-1147")
+folder <- system.file(package="ShortRead", "extdata/E-MTAB-1147") #example dataset
+
+folder <- "/Users/fsilvestre/bioinformatic_workshop/RAW_data_Florida_Belize/fastq/" #real dataset
+
+?rqc
+vignette("Rqc")
+
 qcRes <- rqc(path=folder, pattern=".fastq.gz", openBrowser=FALSE)
 perFileInformation(qcRes)
 
-rqcCycleQualityBoxPlot(qcRes)
+saveRDS(qcRes, file="RAW_data_Florida_Belize/RDS/qcRes.RDS")
+qcRes <- readRDS("RAW_data_Florida_Belize/RDS/qcRes.RDS")
+qcRes
+
 rqcReadQualityBoxPlot(qcRes)
 rqcReadQualityPlot(qcRes)
+rqcCycleAverageQualityPlot(qcRes)
+rqcReadFrequencyPlot(qcRes)
+rqcCycleQualityPlot(qcRes)
+rqcCycleAverageQualityPcaPlot(qcRes)
+rqcCycleBaseCallsLinePlot(qcRes)
 
-rqcCycleBaseCallsLinePlot(qcRes) # content of bases
+#we can save the analysis in a html report
 
-rqcReadFrequencyPlot(qcRes) #read freqeuncy plot
+files <- list.files(folder, "fastq.gz", full.names=TRUE)
+qa <- rqcQA(files, workers=1)
 
-getwd()
+saveRDS(qa, file="RAW_data_Florida_Belize/RDS/qa.RDS")
+qa <- readRDS("RAW_data_Florida_Belize/RDS/qa.RDS")
 
-# same with a file from rivulus (! bug here)
-qcRes <- rqc(path="P01-15-trim.fastq.gz", pattern=".fastq.gz", openBrowser=FALSE)
+reportFile <- rqcReport(qa)
+saveRDS(reportFile, file="RAW_data_Florida_Belize/RDS/reportFile.RDS")
+readRDS("RAW_data_Florida_Belize/RDS/reportFile.RDS")
+browseURL(reportFile)
 
-fq <- readFastq("P01-15-trim.fastq.gz") #long time
+
+# we can analyse a single sample and work on the sequence
+fq <- readFastq("RAW_data_Florida_Belize/fastq/Brain2.fastq.gz") #long time
 fq
 
-saveRDS(fq, file="fq.RDS")
-b <- readRDS("fq.RDS")
+saveRDS(fq, file="RAW_data_Florida_Belize/RDS/fqBrain2.RDS")
+fq <- readRDS("RAW_data_Florida_Belize/RDS/fqBrain2.RDS")
 
-#object ShortReadQ
 class(fq)
 sequences <- sread(fq)
 sequences
 id(fq)
-#object FastqQuality
 qfq <- quality(fq)
 qfq
 class(qfq)
-#to subtract the bases from 1 to 5 from each read; long time
-substr(sequences,1,5)
 
 qPerBase=as(quality(fq[1]), "matrix")
 qPerBase
 qcount=rowSums(qPerBase<=20)
 qcount
-```
-
-
-# idem ci-dessous mais pour générer un rapport sous forme de liste 
-#on crée ensuite un rapport final en html
-
-```{r}
-folder <- system.file(package="ShortRead", "extdata/E-MTAB-1147")
-files <- list.files(folder, "fastq.gz", full.names=TRUE)
-qa <- rqcQA(files, workers=1)
-qa
-reportFile <- rqcReport(qa)
-browseURL(reportFile)
 ```
 
 
@@ -168,15 +195,18 @@ library("fastqcr")
 
 
 
-# 2° Filtrer et trim les reads
+# 2° Filter et trim the reads
+
+We must trim the reads to increase the quality to have a good alignment. For that, we usually use TRIM GALORE (which is using CUTADAPT)
+	- remove adapters
+	- remove low quality nucleotides (< 20)
+	- remove the end-repaired C at the extremity (--rrbs)
+	
+Alternatively, we can use QuasR but less good for RRBS.
 
 ```{r}
 
-if(!require("QuasR")){
-    BiocManager::install("QuasR")
-}
-library(QuasR)
-
+vignette("QuasR")
 
 fastqFiles <- system.file(package="ShortRead",
                           "extdata/E-MTAB-1147",
@@ -189,7 +219,7 @@ preprocessReads(fastqFiles, outfiles,
                 truncateEndBases=3,
                 Lpattern="ACCCGGGA",
                 minLength=40)
-library(ShortRead)
+
 fastqFile <- system.file(package="ShortRead",
                           "extdata/E-MTAB-1147",
                           "ERR127302_1_subset.fastq.gz")
@@ -199,21 +229,35 @@ qcount=rowSums(qPerBase<=20)
 fq[qcount==0]
 writeFastq(fq[qcount==0],
            paste(fastqFile, "Qfiltered", sep="_")) #réécrire un nouveau fichier fastq
-```
 
-#on rivulus sample from Valentine
-trimming of the 3 first bp CGG from the file received from GIGA and already trimmed for adaptors.
-```{r}
-?preprocessReads
-preprocessReads(filename = "P01-15-L_AHV5CKDRXX_S577_L001_R1_001 trim.fastq.gz", outputFilename="P01-15-trim.fastq.gz", truncateStartBases = 3, truncateEndBases= 2, nBases=1)
+#with real samples (too long)
+preprocessReads(filename = "RAW_data_Florida_Belize/fastq/Brain2.fastq.gz", outputFilename="RAW_data_Florida_Belize/fastq/Brain2trimQuasR.fastq.gz", truncateEndBases= 2, nBases=1, minLength=40, Lpattern="AGATCGGAAGAG")
+
+#Illumina univeral adaptor= AGATCGGAAGAG
 
 ```
 
+The result of the trimming of Brain2 can be summarized here:
 
+![Trim Brain2](images/tabletrimBrain2.png)
+After trimming and quality control, we can aligned the sequences to the reference genome. For BiSeq, we use Bismark (which is using Bowtie2): https://www.bioinformatics.babraham.ac.uk/projects/bismark/ 
 
-#Load the raw data from BAM files on the harddrive
+A reference genome assembly must be first downloaded. For rivulus, the last genome assembly (RefSeq assembly accession: GCF_001649575.2 ) can be found here: https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_001649575.2/
 
-We must first reorganize the BAM files after Bismark with the samtools package from the terminal
+Then the genome must be prepared for RRBS before running Bismark with chosen options.
+
+Example:
+
+Prepare the genome for RRBS if we first use the genome:
+/Applications/Bismark-0.22.3/bismark_genome_preparation --path_to_aligner /Applications/bowtie/bin/ --verbose ~/bioinformatic_workshop/RAW_data_Florida_Belize/Sequences/genomeDovetail/
+
+-Run Bismark:
+/Applications/Bismark-0.22.3/bismark --genome ~/bioinformatic_workshop/RAW_data_Florida_Belize/Sequences/genomeDovetail/ --score_min L,0,-0.6 --output_dir ~/bioinformatic_workshop/RAW_data_Florida_Belize/Bismark_output ~/bioinformatic_workshop/RAW_data_Florida_Belize/TrimGalore_output/Brain2_trimmed_simple_nondir.fq.gz
+
+The output are sam.gz files that must first be uncompressed.
+Bismark writes a report in .txt where we can find many infos such as the average % methylation.
+
+We must first reorganize the  files after Bismark with the samtools package from the terminal.
 
 Now we read a file from Bismark with the format .SAM
 SAM files must be sorted by chromosome and read position columns, using ‘sort’ command in unix-like machines will accomplish such a sort easily. BAM files should be sorted and indexed. This could be achieved with samtools (http://www.htslib.org/doc/samtools.html).
@@ -235,28 +279,30 @@ When you align FASTQ files with all current sequence aligners, the alignments pr
 
 ./samtools/samtools sort CTL1.bam -o CTL1.sorted.bam
 
-```{r}
-my.methRaw <- processBismarkAln( location = "CTL1.sorted.bam",
-                         sample.id="CTL1", assembly="ASM164957v1", 
-                         read.context="CpG", save.folder=getwd())
 
-my.methRaw
-```
-                         
-The file has been saved in the wd: CTL1_CpG.txt and CTL1_CpG_conversionStats.txt
+# 2° Working in methylKit
+
+## Importing the data in methylKit
+
+Once the files are in .BAM format after Samtools, we can import them in methylKit package in R using processBismarkAln function.
 
 We can now do it at once for several files (it takes 6-7min per file)
 It's an object methylRawList of 6
 
+The file has been saved in the txt file to save time: 2_CpG.txt, etc
+
+
 ```{r}
-file.list <- list( "CTL1.sorted.bam", "CTL2.sorted.bam", "CTL3.sorted.bam","CTL4.sorted.bam", "CTL5.sorted.bam", "EE22.sorted.bam", "EE23.sorted.bam", "EE24.sorted.bam", "EE25.sorted.bam")
 
-file.list
+vignette("methylKit")
 
+file.list <- list( "Brain2.sorted.bam", "Brain3.sorted.bam", "Brain4.sorted.bam","Brain69.sorted.bam", "Brain71.sorted.bam", "Brain73.sorted.bam")
+
+#it takes a lot of time
 myobj <- processBismarkAln(file.list,
-           sample.id=list("CTL1","CTL2","CTL3", "CTL4", "CTL5", "EE22", "EE23", "EE24", "EE25"),
-           assembly="ASM164957v1",
-           treatment=c(1,1,1,1,1,0,0,0,0),
+           sample.id=list("TC1","TC2","TC3", "EPP1", "EPP2", "EPP3"),
+           assembly="ASM164957v2",
+           treatment=c(1,1,1,0,0,0),
            read.context="CpG",
            save.folder = getwd(),
            mincov = 10
@@ -266,282 +312,255 @@ myobj <- processBismarkAln(file.list,
 length(myobj)
 class(myobj)
 head(myobj)
-?methRead
 
-dir()
-file.list <- list("CTL1_CpG.txt", "CTL2_CpG.txt", "CTL3_CpG.txt", "CTL4_CpG.txt", "CTL5_CpG.txt", "EE22_CpG.txt", "EE23_CpG.txt", "EE24_CpG.txt", "EE25_CpG.txt")
+
+file.list <- list("/RAW_data_Florida_Belize/txt/2_CpG.txt", "/RAW_data_Florida_Belize/txt/3_CpG.txt", "/RAW_data_Florida_Belize/txt/4_CpG.txt", "/RAW_data_Florida_Belize/txt/69_CpG.txt", "/RAW_data_Florida_Belize/txt/71_CpG.txt", "/RAW_data_Florida_Belize/txt/73_CpG.txt")
 
 myobj <- methRead(file.list,
-           sample.id=list("CTL1","CTL2","CTL3", "CTL4", "CTL5", "EE22", "EE23", "EE24", "EE25"),
-           assembly="ASM164957v1",
-           treatment=c(1,1,1,1,1,0,0,0,0),
+           sample.id=list("TC1","TC2","TC3", "EPP1", "EPP2", "EPP3"),
+           assembly="ASM164957v2",
+           treatment=c(1,1,1,0,0,0),
            context="CpG",
            mincov = 10
            )
 
-myobj <- readRDS("myobj.RDS")
+saveRDS(myobj, file="/Users/fsilvestre/bioinformatic_workshop/RAW_data_Florida_Belize/RDS/TC-EPP.RDS")
+myobj <- readRDS("RAW_data_Florida_Belize/RDS/TC-EPP.RDS")
+
 myobj
-head(myobj)
+
 ```
 
-# Analyse the CpG on each file and filter to get rid of the low quality
+Between 1 312 273 and 1 712 975 rows > CpG
+
+## Analyse the CpG on each file and filter to get rid of the low quality
 
 ```{r}
-par(mfrow = c(1,9))
-for(a in 1:9) {getMethylationStats(myobj[[a]], plot=T, strands = F)}
-getMethylationStats(myobj[[4]],plot=TRUE,both.strands=F)
+
 ?getMethylationStats
+
+par(mfrow = c(2,3))
+for(a in 1:6) {getMethylationStats(myobj[[a]], plot=T, strands = F)}
+par(mfrow=c(1,1))
+
+getMethylationStats(myobj[[1]],plot=TRUE,both.strands=F)
+
 ```
 
 ```{r}
-par(mfrow = c(1,9))
-for(a in 1:9) {getCoverageStats(myobj[[a]], plot=T, strands = F)}
+
+par(mfrow = c(2,3))
+for(a in 1:6) {getCoverageStats(myobj[[a]], plot=T, strands = F)}
+par(mfrow=c(1,1))
+
 getCoverageStats(myobj[[1]],plot=T,both.strands=FALSE)
-getCoverageStats(myobj[[1]],plot=F,both.strands=FALSE)
+getCoverageStats(myobj[[6]],plot=F,both.strands=FALSE)
 
-?getCoverageStats
 ```
 
 ```{r}
-filtered.myobj <- filterByCoverage(myobj,lo.count=10,lo.perc=NULL,
-                                      hi.count=NULL,hi.perc=99.9)
-getCoverageStats(filtered.myobj[[1]],plot=T,both.strands=FALSE)
+?filterByCoverage
+
+filtered.myobj <- filterByCoverage(myobj,lo.count=**,lo.perc=**,
+                                      hi.count=**,hi.perc=**)
+
+par(mfrow = c(2,3))
+for(a in 1:6) {getCoverageStats(filtered.myobj[[a]], plot=T, strands = F)}
+par(mfrow=c(1,1))
+
+getCoverageStats(filtered.myobj[[2]],plot=T,both.strands=FALSE)
 getCoverageStats(filtered.myobj[[4]],plot=F,both.strands=FALSE)
 
-```
+filtered.myobj
 
-Exercise to do the same without a minimum coverage
-for CTL4 (it takes time to read the bam file ; change the name)
+#we can be more stringent and take a min coverage of 20
+filtered.myobj20 <- ***
 
-```{r}
-myobj4 <- processBismarkAln("CTL4.sorted.bam",
-           sample.id="CTL4bis",
-           assembly="ASM164957v1",
-           read.context="CpG",
-           save.folder = getwd(),
-           mincov = 0
-           )
-
-
-myobj4 <- methRead("CTL4bis_CpG.txt",
-           sample.id="CTL4bis",
-           assembly="ASM164957v1",
-           mincov = 0
-           )
-
-myobj4
-
-getMethylationStats(myobj4,plot=TRUE,both.strands=F)
-
-getCoverageStats(myobj4,plot=T,both.strands=FALSE)
-
-getCoverageStats(myobj4,plot=F,both.strands=FALSE)
+par(mfrow = c(2,3))
+for(a in 1:6) {getCoverageStats(filtered.myobj20[[a]], plot=T, strands = F)}
+par(mfrow=c(1,1))
 
 ```
-Results: we have 6,103,000 CpG without coverage of 10
-1,112,000 with coverage !
+
+Between 1 310 958 and 1 711 258 rows > CpG
 
 
 
-#Unite the different files in the same object
+## Unite the different files in the same object
 
 We can set a minimum number of samples covered min.per.group (1L, 2L, 3L)
+
 ```{r}
-meth <- methylKit::unite(filtered.myobj, destrand=FALSE, min.per.group = NULL)
-head(meth)
+?methylKit::unite
+
+meth <- methylKit::unite(filtered.myobj, destrand=T, min.per.group = NULL)
 meth
-meth3L <- methylKit::unite(filtered.myobj, destrand=FALSE, min.per.group = 3L)
-meth3L
-meth1L <- methylKit::unite(filtered.myobj, destrand=FALSE, min.per.group = 1L)
-meth1L
+
+meth2L <- methylKit::unite(filtered.myobj, destrand=T, min.per.group = 2L)
+meth2L
+
+meth20 <- methylKit::unite(filtered.myobj20, destrand=T, min.per.group = NULL)
+meth20
 
 ```
-There are 11,918 CpG analyzed in the unite object for CpG in all samples.
-If we limit to minimum 3 samples, we have 976,600
-1,131,000 if we take all =± # of CpG total
+There are 691 258 CpG analyzed in the unite object for CpG in all samples.
+If we limit to minimum 2 samples, we have 1 077 721 CpG
+If we take a min coverage of 20, we have 269 230 CpG only
 
 
-#See the variability of each CpG and filter the CpGs by the SD and get the percentage methylation Matrix
-We also plot this matrix
+## See the variability of each CpG and get the percentage methylation Matrix
 
 ```{r}
+
+?percMethylation
+
 pm=percMethylation(meth) # get percent methylation matrix ; only on CpG in all samples
 head(pm)
 summary(pm)
 
-#calculate coefficient of variation for each CpG in CTL and in EE2
+#calculate the coefficient of variation for each CpG in TC and in EPP
 CV <- function(x){sd(x)/mean(x)*100}
 
-CTL <- apply(pm[,1:5], MARGIN=1,FUN = CV)
-summary(CTL)
-head(CTL)
-EE2 <- apply(pm[,6:9], MARGIN=1,FUN = CV)
-summary(EE2)
-CVall <- apply(pm[,1:9], MARGIN=1,FUN = CV)
+TC <- apply(pm[,1:3], MARGIN=1,FUN = CV)
+head(TC)
+summary(TC)
+EPP <- apply(pm[,4:6], MARGIN=1,FUN = CV)
+summary(EPP)
+CVall <- apply(pm[,1:6], MARGIN=1,FUN = CV)
 summary(CVall)
 
-hist(CTL)
+hist(CVall)
 
 ```
+mean CV TC: 34.36
+mean CV EPP: 29.78
+mean CV all: 44.01
 
 
-#PCA and clustering 
+## PCA and clustering 
+
 Only on a matrix with no NA (CpG in all samples)
 
 ```{r}
+
 getCorrelation(meth,plot=F)
+
 ```
 
 ```{r}
+
 clusterSamples(meth, dist="correlation", method="ward", plot=TRUE)
+
 ```
 
 ```{r}
-pc <- PCASamples(meth,obj.return = T, adj.lim=c(1,1), comp = c(1,2))
-PCASamples(meth, obj.return=T, transpose=F)
+?PCASamples
 
-install.packages("factoextra")
-library(factoextra)
+pc <- PCASamples(meth,obj.return = T, adj.lim=c(1,1), comp = c(1,2))
+
+
 # Eigenvalues
 eig.val <- get_eigenvalue(pc)
 eig.val
 fviz_eig(pc)
 
-?PCASamples
 ```
 
 
-# Make corrections for putative batch effect
-For CpG in all samples
+## Extracting regions of interest
 
 ```{r}
-# make some batch data frame
-# this is a bogus data frame
-# we don't have batch information
-# for the example data
-sampleAnnotation=data.frame(batch_id=c("CTL","CTL","CTL","CTL", "CTL", "EE2", "EE2", "EE2", "EE2"),
-                            age=c(19,34,100,40, 27, 90, 23, 68, 89),
-                            weight=c(28,100,17,90, 35, 89, 20, 101, 21))
-sampleAnnotation
 
-#we can't do the analysis if we have NA > use the meth before filtering
-is.na(meth3L)
+getSampleID(meth)
 
-as=assocComp(mBase=meth,sampleAnnotation)
-as
-?assocComp
-
-#if we want to remove one component:
-newObj=removeComp(meth,comp=2)
-?removeComp
-as2=assocComp(mBase=newObj,sampleAnnotation)
-as2
-
-pc2 <- PCASamples(newObj,obj.return = T, adj.lim=c(1,1), comp = c(1,2))
-
-eig.val <- get_eigenvalue(pc2)
-eig.val
-fviz_eig(pc)
-
-```
-
-
-
-#Extracting regions of interest
-
-```{r}
-getSampleID(meth3L)
 #Reorganize if necessary
-new.meth <- reorganize(meth3L,sample.ids=c("test1","ctrl1"),treatment=c(1,0))
+new.meth <- reorganize(meth,sample.ids=c("TC","EPP"),treatment=c(1,0))
 
 ```
 
 Calculate the different methylation (it can take few minutes)
-Logistic regression
+the most efficient is to use Logistic regression with correction for overdispersion
+Length as covariate:
+Length of fish 2: 4.036 ; 3:  2.187 ; 4: 2.288 ; 69: 3.322 ; 71: 3.552 ; 73: 2.841
+
 ```{r}
+
 ?calculateDiffMeth
 
-dm.lr=calculateDiffMeth(meth,overdispersion = "MN",test ="Chisq", covariate=NULL, adjust = "SLIM")
+lengthcov <- c(4.036, 2.187,2.288, 3.322, 3.552, 2.841)
+sampleIDs <- c(2,3,4,69,71,73)
+covar <- data.frame(sampleID = sampleIDs, length = lengthcov) 
+covar
+
+dm.lr <- calculateDiffMeth(meth, overdispersion = "MN",test ="Chisq", covariate=covar, adjust = "SLIM")
 
 dm.lr
+
+saveRDS(dm.lr, file="RAW_data_Florida_Belize/RDS/DMClr.RDS")
+dm.lr <- readRDS("RAW_data_Florida_Belize/RDS/DMClr.RDS")
+
 ```
 
-Beta binomial distribution
+Alternatively, we can use a beta binomial distribution
+
 ```{r}
+
+?calculateDiffMethDSS
+
 dm.dss=calculateDiffMethDSS(meth, adjust = "SLIM")
 dm.dss
-?calculateDiffMethDSS
+
 ```
 
 Determine the cutoffs
+
 ```{r}
-# get differentially methylated bases/regions with specific cutoffs
-all.diff=getMethylDiff(dm.dss,difference=10,qvalue=0.01,type="all")
-all.diff
-summary(all.diff)
+
 ?getMethylDiff
 
+# get differentially methylated bases/regions with specific cutoffs
+all.diff=getMethylDiff(dm.lr,difference=10,qvalue=0.01,type="all")
+all.diff
+summary(all.diff)
+
 # get hyper-methylated
-hyper=getMethylDiff(dmf,difference=25,qvalue=0.01,type="hyper")
+hyper=getMethylDiff(dm.lr,difference=10,qvalue=0.01,type="hyper")
 hyper
 
 # get hypo-methylated
-hypo=getMethylDiff(dmf,difference=25,qvalue=0.01,type="hypo")
+hypo=getMethylDiff(dm.lr,difference=10,qvalue=0.01,type="hypo")
 hypo
 
-#using [ ] notation
-hyper2=dm.pooledf[dm.pooledf$qvalue < 0.01 & dm.pooledf$meth.diff > 25,]
-hyper2
+#export the results in CSV file to visualize in SeqMonq
+write.csv2(all.diff, file = "RAW_data_Florida_Belize/CSV/DMR_EPP_TC_all.csv")
+write.csv2(dm.lr, file = "RAW_data_Florida_Belize/CSV/analyzed_regions_EPP_TC.csv")
+
+
 ```
 
-
-Correct for covariates
-Only for logistic
-```{r}
-covariates=data.frame(age=c(30,80,34,30,80,40, 30, 40, 90))
-#to simulate a data frame of methylation
-sim.methylBase=dataSim(replicates=9,sites=1000,
-                        treatment=c(rep(1,3),rep(0,3)),
-                        covariates=covariates,
-                        sample.ids=c(paste0("test",1:3),paste0("ctrl",1:3)))
-?dataSim
-
-my.diffMeth3=calculateDiffMeth(sim.methylBase,
-                               covariates=covariates,
-                               overdispersion="MN",
-                               test="Chisq")
-my.diffMeth3
+We found 3545 DMCs > 3545/691258*100 = 0.51% differentially methylated
 
 
-covariates <- data.frame(age=c(30,80,34,30,80,40, 30, 40, 90))
-my.diffMeth4=calculateDiffMeth(meth3L,
-                               covariates=covariates,
-                               overdispersion="MN",
-                               test="Chisq")
-my.diffMeth4
 
-dm.lr=calculateDiffMeth(meth,overdispersion = "MN",test ="Chisq", covariate=NULL, adjust = "SLIM")
-dm.lr
-```
-
-
-#Do the analysis on regions and not CpGs
+## We can do the analysis on regions and not CpGs
 !!! long processing time
 
 ```{r}
 
 myobj_lowCov <- methRead(file.list,
-           sample.id=list("CTL1","CTL2","CTL3", "CTL4", "CTL5", "EE22", "EE23", "EE24", "EE25"),
-           assembly="ASM164957v1",
-           treatment=c(1,1,1,1,1,0,0,0,0),
+           sample.id=list("TC1","TC2","TC3", "EPP1", "EPP2", "EPP3"),
+           assembly="ASM164957v2",
+           treatment=c(1,1,1,0,0,0),
            context="CpG",
            mincov = 3
            )
 
-saveRDS(myobj_lowCov, file="myobj_lowCov.RDS") #to save the object in the wd
-a <- readRDS("myobj_lowCov.RDS")
+saveRDS(myobj_lowCov, file="RAW_data_Florida_Belize/RDS/myobj_lowCov.RDS")
+myobj_lowCov <- readRDS("RAW_data_Florida_Belize/RDS/myobj_lowCov.RDS")
 
-tiles <-  tileMethylCounts(myobj_lowCov,win.size=200,step.size=200,cov.bases = 3)
+?tileMethylCounts
+
+tiles <-  tileMethylCounts(myobj_lowCov,win.size=300,step.size=300,cov.bases = 3)
 head(tiles[[1]])
 ?tileMethylCounts
 tiles[[1]]
@@ -549,82 +568,79 @@ head(tiles[[1]])
 length(tiles)
 class(tiles)
 
-saveRDS(tiles, file="tiles1.RDS")
-b <- readRDS("tiles1.RDS")
+saveRDS(tiles, file="RAW_data_Florida_Belize/RDS/tiles1.RDS")
+tiles <- readRDS("RAW_data_Florida_Belize/RDS/tiles1.RDS")
 
 #unite
-alltiles <- methylKit::unite(b, destrand=FALSE, min.per.group = NULL)
+alltiles <- methylKit::unite(tiles, destrand=FALSE, min.per.group = NULL)
 alltiles
+
 ```
-After unite, we have 86 678 regions
+
 
 ```{r}
-pmat=percMethylation(alltiles) # get percent methylation matrix ; only on CpG in all samples
+
+pmat=percMethylation(alltiles) 
 head(pmat)
 summary(pmat)
 
-#calculate coefficient of variation for each CpG in CTL and in EE2
+#calculate coefficient of variation for each CpG in TC and EPP
 CV <- function(x){sd(x)/mean(x)*100}
 
-CTL <- apply(pmat[,1:5], MARGIN=1,FUN = CV)
-summary(CTL)
-head(CTL)
-EE2 <- apply(pmat[,6:9], MARGIN=1,FUN = CV)
-summary(EE2)
-CVall <- apply(pmat[,1:9], MARGIN=1,FUN = CV)
-summary(CVall)
+tilesTC <- apply(pmat[,1:3], MARGIN=1,FUN = CV)
+summary(tilesTC)
+head(tilesTC)
+tilesEPP <- apply(pmat[,4:6], MARGIN=1,FUN = CV)
+summary(tilesEPP)
+CValltiles <- apply(pmat[,1:6], MARGIN=1,FUN = CV)
+summary(CValltiles)
 
-hist(CTL)
+hist(CValltiles)
 
 ```
-The mean %met is now around 70%. CV around 9%
+
 
 ```{r}
 c <- readRDS("tiles.diff.RDS")
 c
 
-tiles.dss=calculateDiffMethDSS(alltiles, adjust = "SLIM")
-tiles.dss
-
-dm.lr=calculateDiffMeth(alltiles,overdispersion = "MN",test ="Chisq", covariate=NULL, adjust = "SLIM")
+dm.lrtiles=calculateDiffMeth(alltiles,overdispersion = "MN",test ="Chisq", covariate=NULL, adjust = "SLIM")
 dm.lr
 
-tiles.diff=getMethylDiff(tiles.dss,difference=10,qvalue=0.01,type="all")
+tiles.diff=getMethylDiff(dm.lrtiles,difference=10,qvalue=0.01,type="all")
 tiles.diff
 
-saveRDS(tiles.diff, file="tiles.diff.RDS")
-
-tiles.diff2=getMethylDiff(tiles.dss,difference=10,qvalue=0.01,type="all")
-tiles.diff2
-
-#save a nice table
-install.packages("kableExtra") #https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html
-library(kableExtra)
-webshot::install_phantomjs() #to be able to export tables with save_kable()
-
-kbl <- kbl(tiles.diff)
-kbl
-table1 <- tiles.diff %>% kbl(caption="Regions of 200 bp that are significantly over or under methylated in EE2") %>% kable_classic("striped",full_width=F) %>%
-        column_spec(1, bold=T)
-table1
-install.packages("magick")
-library(magick)
-save_kable(table1, file="all.diff.png")  
+saveRDS(tiles.diff, file="RAW_data_Florida_Belize/RDS/tiles.diff.RDS")
 
 
 ```
 
 
-#Annotation
+# 3° Annotation
 
 ```{r}
-gff.file = system.file("extdata/chr21.refseq.hg19.gtf", package = "genomation")
-gff = gffToGRanges(gff.file)
-head(gff)
 
-#we can start from a gtf file from rivulus:
-gffkmar <- gffToGRanges("/Users/fsilvestre/Documents UNamur/Frederic URBE/Recherche/Protocoles & methods/Statistic methods/Omics data analysis/set directory/kmargtf.gtf")
-head(gffkmar)
-unique(gffkmar$type)
-gffToGRanges(gffkmar)
-````
+BiocManager::install(c("genomation", "rtracklayer", "bedr", "GenomicRanges"))
+
+pacman::p_load(genomation, rtracklayer, GenomicTools, bedr, GenomicRanges)
+
+GTF <- rtracklayer::import('RAW_data_Florida_Belize/Sequences/GTF/genomic.gtf')
+length(GTF)  
+class(GTF)
+head(GTF)
+unique(GTF$type)
+unique(GTF$gene_id)
+
+GTFsplit=as(split(GTF, GTF$type), "GRangesList")
+length(GTFsplit)
+GTFsplit
+GTFsplit[[6]]
+
+all.diffG <- as(all.diff, "GRanges")
+
+annotateWithFeatures(all.diffG,GTFsplit)
+
+```
+! GenomicTools is not supported in CRAN anymore
+
+
