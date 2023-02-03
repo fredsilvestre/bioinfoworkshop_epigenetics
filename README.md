@@ -29,8 +29,9 @@ The students should be familiar with RStudio environment and basic functions and
 
 # Part3:
 
-- Running quality control from a fastq sequence (FASTQC)
-- Alignment to a reference genome with Bismark and Samtools
-- Trimming with Trim Galore!
+- Running quality control from a fastq sequence (FASTQC or Bioconductor)
+- Alignment to a reference genome  (Bismark and Samtools)
+- Trimming (Trim Galore! or Bioconductor)
 - DNA methylation analysis on real data with the methylkit package
+- Data visualisation (SeqMonk)
 
