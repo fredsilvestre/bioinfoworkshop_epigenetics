@@ -92,7 +92,7 @@ pacman::p_load(GenomicRanges, GenomeInfoDb, IRanges, Biostrings, BSgenome, Annot
 ?mean
 help.start()
 help(package = "GenomicRanges")
-vignette("GenomicRanges")
+vignette("methylKit")
 browseVignettes("GenomicRanges")
 
 ```
@@ -214,7 +214,18 @@ translate(seqs2)
 ```{r}
 
 #combine the 2 sequences of CDR2 gene (seqs2 and subseq1) in 2 DNAStringSet object of length 1, and in 1 DNAStringSet object of length 2
-#***
+
+singleseq2 <- c(unlist(seqs2), unlist(subseq1))#combine 2 sequences from the downloaded sequence
+singleseq2
+seqlist2 <- list(seqs2, subseq1)
+seqlist2
+widths2 <- sapply(seqlist2, function(x) sum(width(x)))
+widths2
+seqviews2 <- successiveViews(singleseq2, widths2)
+seqviews2
+seqstring2 <- as(seqviews2, "DNAStringSet")
+seqstring2
+
 ```
 
 
