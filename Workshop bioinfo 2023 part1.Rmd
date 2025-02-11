@@ -1,10 +1,10 @@
 ---
-title: "Working with bioconductor - workshop 2023 part1"
+title: "Working with bioconductor - workshop 2025 part1"
 author: "Frédéric Silvestre"
-date: "11/1/2023"
+date: "11/02/2025"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 This first part of the workshop aims to introduce bioconductor packages and to work with sequences and genomic objects in R. It will also introduce Rmarkdown.
@@ -12,59 +12,110 @@ This first part of the workshop aims to introduce bioconductor packages and to w
 
 # 0° Preparation of the working environment
 
-## General setup of RMarkdown chunks and common shortcuts (for MacOS)
 
-```{r setup}
-if(!requireNamespace("knitr", quietly=TRUE))
-        install.packages("knitr")
-library(knitr)
-if(!requireNamespace("rmarkdown", quietly=TRUE))
-        install.packages("rmarkdown")
-library(rmarkdown)
+## Install R v4.4 and update RStudio
 
-knitr::opts_chunk$set(eval=F, results="hide", echo = TRUE, include=TRUE, warning=TRUE, error=TRUE)
-```
 
-Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
-Option/Command I to create a chunk  
-Shift/option ( to [  
-Option ( to {  
-| shift/option L  
-~ option n  
-double space to change the paragraph  
-to open /var folder > command + shift + G (write /var)  
+https://www.listendata.com/2015/08/how-to-update-r-software.html 
 
-## Set working directory 
+Go to the CRAN website.
+For Windows Users - https://cran.r-project.org/bin/windows/base/.
+For Mac Users - https://cran.r-project.org/bin/macosx/
+Download the latest R installer.
+Run the installer, and it will guide you through the installation process.
+After updating R, open RStudio. Close RStudio if it is already opened and open it again.
+RStudio will automatically detect the updated R version. Run this command R.version.string to check the R version RStudio is using.
 
-```{r eval=T}
-getwd()
-setwd("/Users/fsilvestre/bioinformatic_workshop/") # adapt to your computer
-ls()
-rm(list = ls())
-tempdir() #where to save all the data from R
-dev.off() #to reset the graph device options
+The R packages are located in (for mac users) : computername/Library/Frameworks/R.framework/Versions/X.XX/Resources/library
+
+Copy all the old R version packages to the new version. Update the packages.
+
+Install the last version of R studio:
+https://posit.co/download/rstudio-desktop/ 
+
+```{r eval=F}
+
+R.version.string
+#you can also use the command line R --version
+
+options(repos = c(CRAN = "https://cloud.r-project.org/")) #seta  CRAN mirror (repository URL) to check for package updates
+
+update.packages(ask=F)
+
+packageStatus()
+
 sessionInfo()
 
 ```
 
-## Install R v4.2 and update RStudio
+
+## General setup of RMarkdown chunks and common shortcuts (for MacOS)
 
 
-## Install Bioconductor 3.16 and requested packages
+```{r eval=F}
+if(!requireNamespace("knitr", quietly=TRUE)){
+        install.packages("knitr")
+library(knitr)}
+
+if(!requireNamespace("rmarkdown", quietly=TRUE)){
+        install.packages("rmarkdown")
+library(rmarkdown)}
+
+if(!requireNamespace("tinytex", quietly=TRUE)) { #this package will permit to knit into a pdf file
+library(tinytex) }
+tinytex::install_tinytex()
+
+```
+
+```{r eval=T}
+knitr::opts_chunk$set(eval=F, results="markup", echo = T, warning=F, error=T)
+```
+
+Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
+Option/CTL I to create a chunk  
+Shift/option ( to [ 
+Option ( to { 
+| shift/option L  
+~ option n  
+shift/option/command G > go to line xxx
+double space to change the paragraph  
+
+
+## Set working directory 
+
+
+```{r}
+setwd("XXXXX") # adapt to your computer
+getwd()
+
+ls()
+rm(list = ls())
+
+tempdir() #where to save temporary data from R
+list.files(tempdir())
+unlink(tempdir(), recursive = TRUE)
+
+dev.off() #to reset the graph device options
+
+```
+
+
+## Install Bioconductor 3.20 and requested packages
+
 
 Bioconductor: https://www.bioconductor.org/
+https://www.bioconductor.org/install/ 
+
 search for available packages: https://www.bioconductor.org/packages/release/BiocViews.html#___Software
 
 ```{r}
 # Check the version of BiocManager on your computer
 BiocManager::version()
 
-if(!requireNamespace("BiocManager", quietly=TRUE))
-        install.packages("BiocManager")
-
-BiocManager::install(version="3.16")
-
-library(BiocManager)
+if (!require("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+BiocManager::install(version = "3.20")
+library(BiocManager)}
 
 #To check the number of packages available in Bioconductor
 avail <- BiocManager::available()
@@ -72,49 +123,65 @@ length(avail)
 
 #update your packages
 BiocManager::install()
+```
 
-install.packages("stringi",type="mac.binary") #if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
-library(stringi)
 
-if(!requireNamespace("pacman", quietly=TRUE)) #the package pacman allows to install and load several packages from Cran at once if they're not installed.
-        install.packages("pacman")
-library(pacman)
+```{r}
+if (!require("stringi", quietly = TRUE)) {
+      install.packages("stringi",type="mac.binary") 
+      library(stringi)}
 
-BiocManager::install(c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "SummarizedExperiment", "airway", "GenomicFeatures", "SGSeq", "qvalue"))
-pacman::p_load(GenomicRanges, GenomeInfoDb, IRanges, Biostrings, BSgenome, AnnotationHub, SummarizedExperiment, airway, GenomicFeatures, SGSeq, qvalue)
+#mac.binary > if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
+
+bioc_packages <- c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "SummarizedExperiment", "airway", "GenomicFeatures", "SGSeq", "qvalue", "pwalign", "rtracklayer")  
+
+for (pkg in bioc_packages) {
+    if (!require(pkg, quietly = TRUE)) {
+        BiocManager::install(pkg, ask = FALSE)  # Install without asking for confirmation
+        library(pkg, character.only = TRUE)
+    }
+}
 
 ```
 
+
 ## To obtain help
+
 
 ```{r}
 
 ?mean
 help.start()
 help(package = "GenomicRanges")
-vignette("methylKit")
+vignette()
+vignette("ExpressionSetIntroduction")
 browseVignettes("GenomicRanges")
 
 ```
 
+
 ## To save and load R objects
+
 
 ```{r}
 
-saveRDS(tiles, file="tiles1.RDS")
-b <- readRDS("tiles1.RDS")
+saveRDS(tiles, file="RDS/tiles1.RDS")
+b <- readRDS("RDS/tiles1.RDS")
 
 ```
 
 
-
 # 1° Working with sequences
+
 
 ## Create a DNAstring object
 
+
+The DNAString and DNAStringSet classes in Bioconductor's Biostrings package are used for efficiently storing and manipulating DNA sequences in R.
+
 ```{r}
 
-DNA <- DNAString("TCAG") #create a Biostring object
+DNA <- DNAString("GATTACCGA") #create a Biostrings object
 DNA
 class(DNA)
 
@@ -124,22 +191,31 @@ a
 
 length(DNA) #count the number of nucleotides
 b <- DNA[2:3]
-class(b)
 b
 
-DNA2 <- DNAString("AAGCTAT")
+DNA2 <- DNAString("GCATGCGA")
 DNA2
+
+DNA21 <- DNAString("TCCGGANG") #N is an ambiguous base
+DNA21
+
+DNA22 <- xscat(DNA, DNA2) #combine 2 DNA sequences
+DNA22
+
 ```
+
 
 ## Create a set of DNAstring objects
 
+
 ```{r}
 
-DNA3 <- DNAStringSet(c("TCA", "AAATCG")) 
+DNA3 <- DNAStringSet(c("TCGAG", "AAGCGTAT")) 
 DNA3
 class(DNA3)
 length(DNA3) #count the number of objects Biostring
 width(DNA3) #count the number of nucleotides
+sum(width(DNA3))
 
 set1 <- DNA3[1]
 set1
@@ -149,13 +225,17 @@ unique(DNA3)
 duplicated(DNA3)
 
 DNA4 <- DNAStringSet(c("TCA", "AAATCG", "TCA")) 
+DNA4
 unique(DNA4)
 dup <- duplicated(DNA4)
+dup
 sum(dup, na.rm=T) #count the number of duplicate sequences
 
 ```
 
+
 ## Combine 2 DNAString objects
+
 
 ```{r}
 
@@ -167,13 +247,69 @@ seqs1$seq1
 ```
 
 
-## Seq in FASTA format of the gene CDR2 of Kmar (downloaded from https://www.ensembl.org/)
+## Common operations with DNAstring objects
+
 
 ```{r}
 
-?readDNAStringSet
+reverseComplement(DNA)
+DNA
 
-seqs2 <- readDNAStringSet(filepath="RAW_data_Florida_Belize/Sequences/kmarCDR2.fa", format="fasta") 
+reverseComplement(seqs1)
+
+rna_seq <- RNAString(DNA)  # Convert DNA to RNA
+rna_seq
+
+matchPattern("CG", DNA)  # Find occurrences of "CG" in DNA
+
+mp <- matchPattern("CG", DNA22)  # Find occurrences of "CG" in DNA22
+class(mp)
+length(mp)
+
+```
+
+
+## Performing Pairwise Alignment
+
+
+It requests the package pwalign
+Solves (Needleman-Wunsch) global alignment, (Smith-Waterman) local alignment, and (ends-free) overlap alignment problems.
+The alignment score is a numerical value that measures the quality of an alignment between two sequences. It is calculated based on:
+Matches (rewarded with a positive score)
+Mismatches (penalized with a negative score)
+Gap opening penalties (penalized)
+Gap extension penalties (penalized)
+
+```{r}
+
+#A global alignment aligns sequences from start to end, even if mismatches are required.
+
+alignment <- pairwiseAlignment(DNA, DNA2, type = "global", scoreOnly=F)
+alignment
+
+?pairwiseAlignment
+
+#A local alignment finds the best matching subsequence within the sequences.
+
+alignment2 <- pairwiseAlignment(DNA, DNA2, type = "local", scoreOnly=F)
+alignment2
+
+#An overlap alignment is useful when two sequences should be aligned only where they overlap.
+
+alignment3 <- pairwiseAlignment(DNA, DNA2, type = "overlap", scoreOnly=F)
+alignment3
+
+```
+
+
+## Importing and exporting FASTA files
+
+Seq in FASTA format of the gene MeCP2 of mangrove rivulus (downloaded from https://www.ensembl.org/)
+
+
+```{r}
+
+seqs2 <- readDNAStringSet(filepath="RAW_data_Florida_Belize/Sequences/mecp2.fa", format="fasta") 
 
 seqs2
 names(seqs2)
@@ -181,13 +317,21 @@ class(seqs2)
 length(seqs2)
 width(seqs2)
 
+writeXStringSet(DNA4, "DNA.fasta")
+seqs21 <- readDNAStringSet(filepath="DNA.fasta", format="fasta") 
+seqs21
+
 vmatchPattern("AGGAGGT", seqs2) #retrieve the motif in the sequence
 
-subseq1 <- subseq(seqs2, 2205,2211)
-subseq1
-subseq1 <- subseq(seqs2, start=2205, end=2211)
+subseq1 <- subseq(seqs2, 7327,7333)
 subseq1
 class(subseq1)
+
+subseq2 <- vmatchPattern("TAAGAAGTTTACAC", seqs2)
+subseq2
+
+subseq2 <- subseq(seqs2, 934,947)
+subseq2
 
 print(as.character(seqs2))
 
@@ -195,29 +339,30 @@ letterFrequency(seqs2, "T")
 letterFrequency(seqs2,"GC") #G or C
 
 #Calculate the GC contain
-#****
+
+letterFrequency(seqs2,"GC")/width(seqs2) #GC contain
 
 dinucleotideFrequency(seqs2)
 
-?dinucleotideFrequency
+translate(subseq1)
 
-translate(seqs2)
-
-#Subset the sequence between position 20 and 100
-#****
+#Subset the sequence between position 3000 and 3100
+subseq3 <- subseq(seqs2, 3000,3100)
+subseq3
 
 ```
 
 
 ## Combine 2 subsequences in a single DNAStringSet
 
+
 ```{r}
 
-#combine the 2 sequences of CDR2 gene (seqs2 and subseq1) in 2 DNAStringSet object of length 1, and in 1 DNAStringSet object of length 2
+#combine the 2 sequences of MeCP2 gene (subseq1 and subseq2) in 2 DNAStringSet object of length 1, and in 1 DNAStringSet object of length 2
 
-singleseq2 <- c(unlist(seqs2), unlist(subseq1))#combine 2 sequences from the downloaded sequence
+singleseq2 <- c(unlist(subseq2), unlist(subseq1))
 singleseq2
-seqlist2 <- list(seqs2, subseq1)
+seqlist2 <- list(subseq2, subseq1)
 seqlist2
 widths2 <- sapply(seqlist2, function(x) sum(width(x)))
 widths2
@@ -229,25 +374,27 @@ seqstring2
 ```
 
 
+# 2° Work with set of genes: GRanges
 
-## Work on set of genes: GRanges
 
 ```{r}
 
 ?GRanges
 
 myseq <- DNAString("ACCATTGATTAT")
-myseq
+
 myset <- DNAStringSet(list(chrI=myseq, chrII=DNAString("ACGTACGT")))
 myset
-class(myset)
-range1 <- GRanges("chrI", IRanges(start = 3, end = 5), strand = "+")
+
+range1 <- GRanges("chrI", IRanges(start = 3, end = 6), strand = "+")
 range1
 class(range1)
 
 seqnames(range1)
 strand(range1)
 getSeq(myset, range1)
+
+?getSeq
 
 mcols(range1)$wobble <- 10 #create metadata columns
 range1
@@ -266,21 +413,42 @@ range3[1:2,]
 https://www.ensembl.org/info/website/upload/gff.html 
 To find all the files to download here: https://www.ensembl.org/info/data/ftp/index.html
 
+A GTF (Gene Transfer Format) file is a tab-delimited text file used to store genome annotation data, such as genes, transcripts, and exons. It is commonly used in genomics, RNA sequencing (RNA-Seq), and bioinformatics.
+
+A GTF file consists of nine required columns:
+
+Column #	Column Name	Description
+1	seqname	Chromosome or scaffold (e.g., chr1, chrX)
+2	source	Annotation source (e.g., Ensembl, NCBI, HAVANA)
+3	feature	Type of feature (gene, transcript, exon, CDS, etc.)
+4	start	Start position (1-based)
+5	end	End position
+6	score	Score (usually . if not available)
+7	strand	+ (forward) or - (reverse) strand
+8	frame	Reading frame (0, 1, 2 for CDS features, . otherwise)
+9	attributes	Extra information (e.g., gene name, transcript ID, etc.)
+
+
 ```{r}
 
-features <- import("RAW_data_Florida_Belize/Sequences/GTF/genomic.gtf")
+features <- import("RAW_data_Florida_Belize/Sequences/genomic.gtf")
 features
 mcols(features) <- mcols(features)[,c("type","gene","gene_id")]
 unique(features$gene)
 features
 class(features)
-feat <- subset(features, gene=="mtx3")
-feat
+mecp2 <- subset(features, gene=="mecp2")
+mecp2
+
+exon <- mecp2[mecp2$type=="exon"]
+exon
 
 ```
 
 
 ## To find references for different species using AnnotationHub
+
+AnnotationHub is an R/Bioconductor package that provides easy access to genomic annotation data from various public sources.
 
 ```{r}
 
@@ -314,15 +482,19 @@ table(records$sourcetype)
 mcols(records)[,c("title", "rdataclass", "sourcetype")]
 km <- ah[["AH64640"]]
 
+km
+
 ```
 
 
 ## Working with expressionSet
 
+An ExpressionSet is a specialized data structure in Bioconductor used to store gene expression data along with associated metadata (such as sample information and feature annotations). It is commonly used in microarray and RNA-Seq analysis.
+
 ```{r}
 
-read.table("RAW_data_Florida_Belize/txt/expressiondata.txt", header=TRUE, sep="\t", row.names=1)
-exprs <- as.matrix(read.table("RAW_data_Florida_Belize/txt/expressiondata.txt", header=TRUE, sep="\t", row.names=1))
+exprs <- as.matrix(read.table("RAW_data_Florida_Belize/Sequences/expressiondata.txt", header=TRUE, sep="\t", row.names=1))
+
 exprs
 class(exprs)
 dim(exprs)
@@ -333,9 +505,8 @@ head(exprs[1:3])
 
 minimalSet <- ExpressionSet(assayData=exprs)
 minimalSet
-pData <- read.table("RAW_data_Florida_Belize/txt/pData.txt", row.names=1, header=TRUE, sep="\t")
+pData <- read.table("RAW_data_Florida_Belize/Sequences/pData.txt", row.names=1, header=TRUE, sep="\t")
 pData
-summary(pData)
 
 all(rownames(pData)==colnames(exprs))
 
@@ -366,6 +537,17 @@ exprs(males)
 
 ## SummarizedExperiment for RNAseq
 
+A SummarizedExperiment is a Bioconductor data structure designed to store high-throughput genomic data (e.g., RNA-Seq, ChIP-Seq, microarrays) along with associated metadata.
+
+A SummarizedExperiment consists of:
+
+Component	Description	Access Function
+assay (Expression Data)	Numeric matrix of counts (genes × samples)	assay(se)
+colData (Sample Metadata)	Phenotypic data (e.g., treatment, condition)	colData(se)
+rowRanges (Feature Metadata)	Genomic ranges of genes/transcripts	rowRanges(se)
+metadata (Experiment Info)	Additional study-level data	metadata(se)
+
+
 ```{r}
 
 data(airway, package="airway")
@@ -378,6 +560,7 @@ colData(se)
 se[,se$dex=="trt"]
 metadata(se)
 ```
+
 
 ## Correction for multiple comparisons
 
@@ -400,6 +583,7 @@ points(hedenfalk$p,fdr,pch=19,col="blue")
 legend("bottomright",legend=c("q-value","FDR (BH)","Bonferroni"),
        fill=c("black","blue","red"))
 ```
+
 
 ```{r}
 
