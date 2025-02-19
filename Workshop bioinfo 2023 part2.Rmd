@@ -1,67 +1,118 @@
 ---
-title: "DNA methylation workflow - workshop 2023 part2"
+title: "DNA methylation workflow - workshop 2025 part2"
 author: "Frédéric Silvestre"
-date: "13/1/2023"
+date: "16/02/2025"
 output: html_document
 ---
 
 This part aims to learn the workflow of differential DNA methylation analysis using Bioconductor packages, such as methylKit. We will work on example data provided by the package.
 
-
 # 0° Preparation of the working environment
 
-## General setup of RMarkdown chunks and common shortcuts (for MacOS)
 
-```{r setup}
-if(!requireNamespace("knitr", quietly=TRUE))
-        install.packages("knitr")
-library(knitr)
-if(!requireNamespace("rmarkdown", quietly=TRUE))
-        install.packages("rmarkdown")
-library(rmarkdown)
+## Install R v4.4 and update RStudio
 
-knitr::opts_chunk$set(eval=F, results="hide", echo = TRUE, include=TRUE, warning=TRUE, error=TRUE)
-```
 
-Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
-Option/Command I to create a chunk  
-Shift/option ( to [  
-Option ( to {  
-| shift/option L  
-~ option n  
-double space to change the paragraph  
-to open /var folder > command + shift + G (write /var)  
+https://www.listendata.com/2015/08/how-to-update-r-software.html 
 
-## Set working directory 
+Go to the CRAN website.
+For Windows Users - https://cran.r-project.org/bin/windows/base/.
+For Mac Users - https://cran.r-project.org/bin/macosx/
+Download the latest R installer.
+Run the installer, and it will guide you through the installation process.
+After updating R, open RStudio. Close RStudio if it is already opened and open it again.
+RStudio will automatically detect the updated R version. Run this command R.version.string to check the R version RStudio is using.
 
-```{r eval=T}
-getwd()
-setwd("***") # adapt to your computer
-ls()
-rm(list = ls())
-tempdir() #where to save all the data from R
-dev.off() #to reset the graph device options
+The R packages are located in (for mac users) : computername/Library/Frameworks/R.framework/Versions/X.XX/Resources/library
+
+Copy all the old R version packages to the new version. Update the packages.
+
+Install the last version of R studio:
+https://posit.co/download/rstudio-desktop/ 
+
+```{r eval=F}
+
+R.version.string
+#you can also use the command line R --version
+
+options(repos = c(CRAN = "https://cloud.r-project.org/")) #seta  CRAN mirror (repository URL) to check for package updates
+
+update.packages(ask=F)
+
+packageStatus()
+
 sessionInfo()
 
 ```
 
-## Install R v4.2 and update RStudio
+
+## General setup of RMarkdown chunks and common shortcuts (for MacOS)
 
 
-## Install Bioconductor 3.16 and requested packages
+```{r eval=F}
+if(!requireNamespace("knitr", quietly=TRUE)){
+        install.packages("knitr")
+library(knitr)}
+
+if(!requireNamespace("rmarkdown", quietly=TRUE)){
+        install.packages("rmarkdown")
+library(rmarkdown)}
+
+if(!requireNamespace("tinytex", quietly=TRUE)) { #this package will permit to knit into a pdf file
+library(tinytex) }
+tinytex::install_tinytex()
+
+```
+
+```{r eval=T}
+knitr::opts_chunk$set(eval=F, results="markup", echo = T, warning=F, error=T)
+```
+
+Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
+Option/CTL I to create a chunk  
+Shift/option ( to [ 
+Option ( to { 
+| shift/option L  
+~ option n  
+shift/option/command G > go to line xxx
+double space to change the paragraph  
+
+
+## Set working directory 
+
+
+```{r}
+setwd("*****") # adapt to your computer
+getwd()
+
+ls()
+rm(list = ls())
+
+tempdir() #where to save temporary data from R
+list.files(tempdir())
+unlink(tempdir(), recursive = TRUE) #often, we must restart Rstudio
+
+dev.off() #to reset the graph device options
+
+```
+
+
+## Install Bioconductor 3.20 and requested packages
+
 
 Bioconductor: https://www.bioconductor.org/
+https://www.bioconductor.org/install/ 
+
 search for available packages: https://www.bioconductor.org/packages/release/BiocViews.html#___Software
 
 ```{r}
 # Check the version of BiocManager on your computer
 BiocManager::version()
 
-if(!requireNamespace("BiocManager", quietly=TRUE))
-        install.packages("BiocManager")
-BiocManager::install(version="3.16")
-
-library(BiocManager)
+if (!require("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+BiocManager::install(version = "3.20")
+library(BiocManager)}
 
 #To check the number of packages available in Bioconductor
 avail <- BiocManager::available()
@@ -69,44 +120,56 @@ length(avail)
 
 #update your packages
 BiocManager::install()
+```
 
-install.packages("stringi",type="mac.binary") #if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
-library(stringi)
 
-if(!requireNamespace("pacman", quietly=TRUE)) #the package pacman allows to install and load several packages from Cran at once if they're not installed.
-        install.packages("pacman")
-library(pacman)
+```{r}
+#if (!require("stringi", quietly = TRUE)) {
+#      install.packages("stringi",type="mac.binary") 
+#      library(stringi)}
 
-BiocManager::install(c("methylKit", "ShortRead", "GenomicRanges", "genomation"))
-pacman::p_load(methylKit, ShortRead, GenomicRanges,genomation, remotes, factoextra)
+#mac.binary > if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
 
-BiocManager::install("methylKit", force=T) # if it does not work
+bioc_packages <- c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "GenomicFeatures", "SGSeq", "qvalue", "pwalign", "methylKit", "ShortRead","genomation", "remotes", "factoextra", "gridExtra", "ggplot2", "txdbmaker", "psych", "diptest")  
+
+for (pkg in bioc_packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+        BiocManager::install(pkg, ask = FALSE)
+        library(pkg, character.only = TRUE)
+    }
+}
 
 ```
 
+
 ## To obtain help
+
 
 ```{r}
 
 ?mean
 help.start()
-help(package = "methylKit")
-vignette("methylKit")
-browseVignettes("methylKit")
+help(package = "GenomicRanges")
+vignette()
+vignette("ExpressionSetIntroduction")
+browseVignettes("GenomicRanges")
 
 ```
 
+
 ## To save and load R objects
+
 
 ```{r}
 
-saveRDS(tiles, file="tiles1.RDS")
-b <- readRDS("tiles1.RDS")
+saveRDS(tiles, file="RDS/tiles1.RDS")
+b <- readRDS("RDS/tiles1.RDS")
 
 ```
 
 
 # 1° Working on DNA methylation data with methylKit package
+
 
 ## Data filtering and exploratory analyses
 
@@ -114,13 +177,16 @@ We start the analysis with the methylation call file after the alignment with Bi
 Create a file.list object from the txt files. System.file means the file where the packages are installed: This function is meant to intercept calls to system.file, so that it behaves well with packages loaded by devtools. It is made available when a package is loaded with load_all.
 Example here with the package methylKit. Two files for the control and 2 for the treatment.
 
-The location is: [1] "/Library/Frameworks/R.framework/Versions/4.2/Resources/library/methylKit/extdata/test1.myCpG.txt"
+The location is: [1] "/Library/Frameworks/R.framework/Versions/4.4/Resources/library/methylKit/extdata/test1.myCpG.txt"
 Press option while clicking on go to in the finder (Bibliothèque = Library). It will show the hidden files.
 Or press fn + Command + shift + . in the finder to show the hidden files.
 
 ```{r}
 
-system.file()#to find your system file
+system.file() #to find your system file
+system.file(package="methylKit")
+
+?system.file
 
 a <- system.file("extdata", "test1.myCpG.txt", package="methylKit")
 a
@@ -143,6 +209,7 @@ Tab-separated bedgraph like formats from Bismark methylation caller can also be 
 According to Liu 2020, a 30X coverage is the ideal balance.
 
 ```{r}
+
 myobj <- methRead(file.list,
            sample.id=list("test1","test2","ctrl1","ctrl2"),
            assembly="hg18",
@@ -152,21 +219,28 @@ myobj <- methRead(file.list,
            mincov = 30
            )
 
-#characterize myobj
-length(myobj)
-class(myobj)
-head(myobj)
-myobj
 ?methRead
+
+#characterize myobj
+class(myobj)
+
+length(myobj)
+head(myobj)
+
+myobj[[1]]
+coverage_values <- myobj[[1]]$coverage
+coverage_values
 
 #change the parameters
 # how many rows are there using mincov of 10 ?
 
-#****
+#*****
+
+
 
 ```
 
-Wa can change the arguments: header, context, resolution, dbdir
+
 Further quality check from the read files.
 Distribution of the %methylation.
 
@@ -176,17 +250,52 @@ getMethylationStats(myobj[[1]],plot=T,both.strands=F)
 
 ?getMethylationStats
 
+#to plot the 4 objects
+plotMethylationStats <- function(myobj, plot = TRUE, both.strands = FALSE) {
+for (i in 1:4) {
+    message(paste("Processing Sample:", i))
+    
+    getMethylationStats(myobj[[i]], plot = T, both.strands = F)
+  }
+}
+
+par(mfrow = c(2, 2))
+plotMethylationStats(myobj)
+par(mfrow = c(1, 1))
+
+
+#extract the median values from the 4 objects
+extractMedianMethylation <- function(myobj) {
+  median_values <- numeric(4)
+    for (i in 1:4) {
+    message(paste("Processing Sample:", i))
+    methylation_levels <- myobj[[i]]$numCs / (myobj[[i]]$numCs + myobj[[i]]$numTs)
+    median_values[i] <- median(methylation_levels, na.rm = T)
+  }
+  return(median_values)
+}
+
+extractMedianMethylation(myobj)
+
 ```
 
+
 We plot the coverage values (we usually keep fragments with cov > 10 but a too high value means problems with the PCR).
+Very high coverage at a CpG site may indicate PCR duplicates—artificially amplified fragments from the same original DNA molecule.
+This can skew methylation percentages, over-representing some CpGs.
+Some CpG sites with extremely high coverage may result from multi-mapping reads (reads aligning to multiple locations in the genome).
+This is common in repetitive regions, leading to artificially inflated methylation values.
 
 ```{r}
 
 getCoverageStats(myobj[[1]],plot=T,both.strands=FALSE)
 
 #what is the percentage of bases covered more than 526 times for sample 1 ?
+#****
 
-#***
+#to plot the 4 objects
+#****
+
 ```
 
 We should now discard the fragments with lower than 10 coverage and too high coverage (> 99.9% percentile of the sample).
@@ -196,9 +305,15 @@ filtered.myobj <- filterByCoverage(myobj,lo.count=10,lo.perc=NULL,
                                       hi.count=NULL,hi.perc=99.9)
 ?filterByCoverage
 
-# What is now the 99.9% percentile coverage ?
+par(mfrow = c(1, 2))
+getCoverageStats(filtered.myobj[[1]],plot=T,both.strands=FALSE)
+getCoverageStats(myobj[[1]],plot=T,both.strands=FALSE)
+par(mfrow = c(1, 1))
 
-#***
+# What is now the 99.9% percentile coverage ?
+#*****
+
+
 ```
 
 
@@ -221,12 +336,12 @@ By default, unite function produces bases/regions covered in all samples. That r
 # creates a methylBase object, 
 # where only CpGs covered with at least 1 sample per group will be returned
 
-# there were two groups defined by the treatment vector, 
-# given during the creation of myobj: treatment=c(1,1,0,0)
+#*****
+
+#How many CpG are there ? 
+#what is the location of the first CpG of the table ?
 
 #****
-
-# what is the location of the first CpG of the table ?
 
 ```
 
@@ -239,7 +354,7 @@ head(pm, 10)
 
 #What are the average CpG %methylation in CTL1 sample ?
 
-#***
+#*****
 
 #calculate coefficient of variation for each CpG in CTL and in test
 
@@ -247,25 +362,57 @@ CV <- function(x){sd(x)/mean(x)*100}
 
 CTL <- apply(pm[,3:4], MARGIN=1,FUN = CV)
 summary(CTL)
-head(CTL)
 CTL
+hist(CTL)
 
 ?apply
 
 test <- apply(pm[,1:2], MARGIN=1,FUN = CV)
 summary(test)
+test
 
 # What is the average CV for all groups together ?
 
-#****
-
-hist(CTL)
+#*****
 
 ```
+
+
+We can search for SMVs using the interquartile range method.
+
+```{r}
+
+pm
+IQR <- apply(pm, 1,IQR) #we calculate the interquartile range (difference between Q25 and Q75)
+IQR
+tpm <- t(pm) #transpose rows in columns
+dpm <- describe(tpm)
+dpm
+describe(dpm)
+dpm <- cbind(dpm, IQR)
+hist(dpm$IQR) #check the distribution of IQR
+abline(v = 20, col = "red", lwd = 2)
+
+dpm20 <- dpm[dpm[,"IQR"] > 20,]
+row_indices <- dpm20[, 1]
+pm20 <- pm[row_indices,]
+dt <- apply(pm20, 1, function(row) dip.test(row)) #test for unimodality
+pval_diptest <- sapply(dt, function(res) res$p.value)
+pval_diptest
+dpm20 <- cbind(dpm20, pval_diptest)
+dpm20 <- filter(dpm20, pval_diptest<0.05)
+plot(density(pm[7,]), main="Kernel Density Estimate 11937", xlab="% methylation", col="blue") #create a graph to see the bimodal distribution
+nrow(dpm20)
+describe(dpm20)
+nrow(dpm20)/nrow(pm)*100
+
+```
+
 
 Filtering CpG
 To remove different CpG based on criteria. For example, we can keep only the CpG with a minimum variation (and not the ones showing mutation C > T).
 Below, we extract percent methylation values from CpGs as a matrix. Calculate standard deviation for each CpG and filter based on standard deviation. We also plot the distribution of per CpG standard deviations.
+
 
 ```{r}
 
@@ -274,20 +421,13 @@ head(pm)
 
 mds=matrixStats::rowSds(pm) # calculate standard deviation of CpGs
 summary(mds)
+mds
 
 hist(mds,col="cornflowerblue",xlab="Std. dev. per CpG")
 
-#subsample CpG with a SD higher than 10 and compare the histogram of SD distribution with non-filtered CpG
+#subsample CpG with a SD higher than 10 and compare the histogram of SD distribution with non-filtered CpG > SMVs (single methytion variant)
 
 #****
-
-pm10 <- percMethylation(methsd10)
-mds10=matrixStats::rowSds(pm10) # calculate standard deviation of CpGs
-
-par(mfrow=c(1,2))
-hist(mds10,col="red",xlab="Std. dev. per CpG", xlim=c(0,50))
-hist(mds,col="cornflowerblue",xlab="Std. dev. per CpG")
-par(mfrow=c(1,1))
 
 ```
 
@@ -299,11 +439,28 @@ Now, let’s assume we know the locations of C->T mutations. These locations sho
 mut=GRanges(seqnames=c("chr21","chr21"),
             ranges=IRanges(start=c(9860126, 9944505),
                            end=c(9860126, 9944505)))
+mut
 
 # select CpGs that do not overlap with mutations
 sub.meth=meth[! as(meth,"GRanges") %over% mut,]
 nrow(meth)
 nrow(sub.meth)
+
+sub.meth
+
+
+#subset one or several CpG in a region
+query_region <- GRanges(seqnames="chr21",ranges = IRanges(start = 9944662, end = 9959407))
+
+hits <- findOverlaps(as(sub.meth, "GRanges"), query_region)
+
+filtered_rows <- sub.meth[queryHits(hits)]
+print(filtered_rows)
+
+#validate that we actually deleted the 2 CpG that are a mutation C>T
+
+#****
+
 ```
 
 
@@ -316,6 +473,7 @@ Search for correlations between samples:
 ```{r}
 
 getCorrelation(meth,plot=TRUE)
+
 getCorrelation(meth,plot=F)
 
 ```
@@ -324,7 +482,7 @@ Clustering samples to group data points by their similarity.
 
 ```{r}
 
-clusterSamples(meth, dist="correlation", method="ward", plot=TRUE)
+clusterSamples(meth, dist="correlation", method="ward.D", plot=TRUE)
 
 ?clusterSamples
 
@@ -332,6 +490,12 @@ clusterSamples(meth, dist="correlation", method="ward", plot=TRUE)
 
 hc = clusterSamples(meth, dist="correlation", method="ward.D", plot=FALSE)
 hc
+hc[[1]]
+
+?kmeans
+
+cl=kmeans(t(percMethylation(meth)),centers=2)
+cl$cluster
 
 ```
 
@@ -341,12 +505,11 @@ Here we plot a screen plot for importance of components.
 
 ```{r}
 
+PCASamples(meth, obj.return=F, adj.lim=c(1,1))
+
 pc <- PCASamples(meth,obj.return = T, adj.lim=c(1,1), comp = c(1,2))
-pc
 
-PCASamples(meth, obj.return=F)
-
-fviz_pca_biplot(pc, repel = TRUE)
+fviz_pca_biplot(pc, repel = T)
 
 # Eigenvalues
 eig.val <- get_eigenvalue(pc)
@@ -366,9 +529,8 @@ In this case, we also returned an object from the plotting function. This is the
 We have implemented some rudimentary functionality for batch effect control. You can check which one of the principal components are statistically associated with the potential batch effects such as batch processing dates, age of subjects, sex of subjects using assocComp. The function gets principal components from the percent methylation matrix derived from the input methylBase object, and checks for association. The tests for association are either via Kruskal-Wallis test or Wilcoxon test for categorical attributes and correlation test for numerical attributes for samples such as age. If you are convinced that some principal components are accounting for batch effects, you can remove those principal components from your data using removeComp.
 
 ```{r}
+
 # make some batch data frame
-# this is a bogus data frame
-# we don't have batch information
 # for the example data
 
 sampleAnnotation=data.frame(batch_id=c("a","a","b","b"),
@@ -381,8 +543,22 @@ as
 
 ?assocComp
 
+#visualize the batch effects
+pcs_df <- data.frame(as$pcs, batch_id = sampleAnnotation$batch_id)
+ggplot(pcs_df, aes(x = PC1, y = PC2, color = batch_id)) +
+  geom_point(size = 3) +
+  labs(title = "PCA of Methylation Data", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+pcs_df <- data.frame(as$pcs, batch_id = sampleAnnotation$age)
+ggplot(pcs_df, aes(x = PC1, y = PC2, color = batch_id)) +
+  geom_point(size = 3) +
+  labs(title = "PCA of Methylation Data", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+
 #if we want to remove one component:
-newObj=removeComp(meth,comp=3)
+newObj=removeComp(meth,comp=4)
 ?removeComp
 newObj
 as2=assocComp(mBase=newObj,sampleAnnotation)
@@ -393,6 +569,24 @@ is.na(meth)
 
 ```
 
+In addition to the methods described above, if you have used other ways to correct for batch effects and obtained a corrected percent methylation matrix, you can use reconstruct function to reconstruct a corrected methylBase object. Users have to supply a corrected percent methylation matrix and methylBase object (where the uncorrected percent methylation matrix obtained from) to the reconstruct function. Corrected percent methylation matrix should have the same row and column order as the original percent methylation matrix. All of these functions described in this section work on a methylBase object that does not have missing values (that means all bases in methylBase object should have coverage in all samples). Not important here.
+
+
+```{r}
+
+mat=percMethylation(meth)
+
+# do some changes in the matrix
+# this is just a toy example
+# ideally you want to correct the matrix
+# for batch effects
+
+mat[mat==100]=80
+ 
+# reconstruct the methylBase from the corrected matrix
+newobj=reconstruct(mat,meth)
+newObj
+```
 
 
 ## Analysis on regions
@@ -411,38 +605,41 @@ myobj_lowCov = methRead(file.list,
            mincov = 3
            )
 
-tiles = tileMethylCounts(myobj,win.size=1000,step.size=1000,cov.bases = 0)
+tiles = tileMethylCounts(myobj_lowCov,win.size=1000,step.size=1000,cov.bases = 0)
+tiles
 ?tileMethylCounts
 
 #How many CpG are there on tiles number 4 ?
 
-#***
+#****
 
-# unite the different samples
+# unite the different samples including all replicates in each group
+# what is the start and end location of the first tile on the table ?
 
-tile <- methylKit::unite(tiles, destrand=FALSE, min.per.group = NULL)
-
-tile
-head(tiles)
+#****
 
 ```
 
 
-## 2° Extracting regions of interest
+# 2° Extracting regions of interest
 
 Search for differentially methylated CpG sites or regions.
 Usually using Fisher's exact test and methylKit package or logistic regression. Here we show for one sample per group (Fisher).
+
 calculateDiffMeth: The function calculates differential methylation statistics between two groups of samples. The function uses either logistic regression test or Fisher's Exact test to calculate differential methylation.
+
 We can add overdispersion, covariate and the method of adjustment (SLIM by deffault, or BH, bonferroni, fdr, qvalue).
+The q-value is the False Discovery Rate (FDR)-adjusted p-value, used to correct for multiple testing. It represents the minimum FDR at which a given CpG site is considered significant.
 
 ```{r}
 
 getSampleID(meth)
+
 new.meth <- reorganize(meth,sample.ids=c("test1","ctrl1"),treatment=c(1,0))
 new.meth
 
 dmf <- calculateDiffMeth(new.meth, overdispersion = NULL, covariate=NULL, adjust = "SLIM", test="fast.fisher")
-dim(dmf)
+
 dmf
 
 ?calculateDiffMeth
@@ -457,7 +654,7 @@ dm.pooledf=calculateDiffMeth(pooled.meth)
 dm.pooledf
 ```
 
-CalculateDiffMeth function returns the P-values for all bases or regions in the input methylBase object. We need to filter to get differentially methylated CpGs. This can be done via getMethlyDiff function or simple filtering via [ ] notation. Below we show how to filter the methylDiff object output by calculateDiffMeth() function in order to get differentially methylated CpGs. The function arguments defines cutoff values for the methylation difference between groups and Q-value. In these cases, we require a methylation difference of 25% and Q-value of at least 0.01.
+CalculateDiffMeth function returns the P-values for all bases or regions in the input methylBase object. We need to filter to get differentially methylated CpGs. This can be done via getMethlyDiff function or simple filtering via [ ] notation. Below we show how to filter the methylDiff object output by calculateDiffMeth() function in order to get differentially methylated CpGs. The function arguments defines cutoff values for the methylation difference between groups and Q-value. In these cases, we require a methylation difference of 10% and Q-value of at least 0.01.
 
 ```{r}
 ?getMethylDiff
@@ -468,20 +665,20 @@ all.diff=getMethylDiff(dmf,difference=10,qvalue=0.01,type="all")
 all.diff
 
 # get hyper-methylated
-hyper=getMethylDiff(dmf,difference=25,qvalue=0.01,type="hyper")
+hyper=getMethylDiff(dmf,difference=10,qvalue=0.01,type="hyper")
 hyper
 
 # get hypo-methylated
-hypo=getMethylDiff(dmf,difference=25,qvalue=0.01,type="hypo")
+hypo=getMethylDiff(dmf,difference=10,qvalue=0.01,type="hypo")
 hypo
 
 #using [ ] notation
-hyper2=dm.pooledf[dm.pooledf$qvalue < 0.01 & dm.pooledf$meth.diff > 25,]
+hyper2=dmf[dmf$qvalue < 0.01 & dmf$meth.diff > 10,]
 hyper2
 ```
 
-Logistic regression based tests.
-However, linear-regression-based methods might produce fitted methylation levels outside the range  
+*Logistic regression based tests.*
+However, linear-regression-based methods might produce fitted methylation levels outside the range
 [0,1] unless the values are transformed before regression. An alternative is logistic regression, which can deal with data strictly bounded between 0 and 1 and with non-constant variance, such as methylation proportion/fraction values.
 If the observed variance is larger or smaller than assumed by the model, one speaks of under- or over-dispersion. This over/under-dispersion can be corrected by calculating a scaling factor and using that factor to adjust the variance estimates.
 MethylKit can apply logistic regression to test the methylation difference with or without the over-dispersion correction. In this case, Chi-square or F-test can be used to compare the difference in the deviances of the null model and the alternative model. The null model assumes there is no relationship between sample groups and methylation, and the alternative model assumes that there is a relationship where sample groups are predictive of methylation values for a given CpG or region for which the model is constructed. Next, we are going to use the logistic regression based model with over-dispersion correction and Chi-square test. Cfr book.
@@ -493,12 +690,16 @@ Overdispersion occurs when the observed variance is higher than the variance of 
 
 ```{r}
 
-dm.lr=calculateDiffMeth(meth,overdispersion = "MN" ,test ="Chisq", covariate=NULL, adjust = "SLIM")
-dm.lr
+# work on the meth object including 2 replicates per condition
+# calculate the differential methylation with your chosen parameters
+
+#****
 
 ```
 
-CalculateDiffMeth function returns the P-values for all bases or regions in the input methylBase object. We need to filter to get differentially methylated CpGs. This can be done via getMethlyDiff function or simple filtering via [ ] notation. Below we show how to filter the methylDiff object output by calculateDiffMeth() function in order to get differentially methylated CpGs. The function arguments defines cutoff values for the methylation difference between groups and Q-value. In these cases, we require a methylation difference of 25% and Q-value of at least 0.01.
+Traditional Benjamini-Hochberg (BH) assumes a uniform distribution of p-values, which may not always be accurate in methylation datasets.
+SLIM adapts to the actual p-value distribution, potentially increasing statistical power while maintaining FDR control.
+SLIM can detect more differentially methylated sites (DMS/DMRs) compared to BH, especially when many sites show small but significant changes.
 
 
 ```{r}
@@ -507,16 +708,16 @@ CalculateDiffMeth function returns the P-values for all bases or regions in the 
 # how many CpG are significant ?
 # how many are hypo-methylated ?
 
-#***
+#****
 
-# get hypo-methylated
+#Compare the results using BH and Slim
 
-#***
+#****
 
 ```
 
 More complex regression models use beta binomial distribution and are particularly useful for better modeling the variance. Similar to logistic regression, their observation follows binomial distribution (number of reads), but methylation proportion itself can vary across samples, according to a beta distribution. It can deal with fitting values in the (0,1) range and performs better when there is greater variance than expected by the simple logistic model. In essence, these models have a different way of calculating a scaling factor when there is over-dispersion in the model. Further enhancements are made to these models by using the empirical Bayes methods that can better estimate hyper parameters of the beta distribution (variance-related parameters) by borrowing information between loci or regions within the genome to aid with inference about each individual loci or region. 
-We are now going to use a beta-binomial based model called DSS(Feng, Conneely, and Wu 2014) to calculate differential methylation.
+We are now going to use a *beta-binomial* based model called DSS(Feng, Conneely, and Wu 2014) to calculate differential methylation.
 Beta-binomial model models overdispersion but is more intensive. Can't use covariate (except with DSS.general).
 Logistic is hard to incorporate overdispersion.
 
@@ -527,7 +728,7 @@ dm.dss
 
 # how many CpG are differentially methylated ?
 
-#***
+#****
 
 ?calculateDiffMethDSS
 ```
@@ -543,22 +744,14 @@ tiles.dss
 tiles.diff=getMethylDiff(tiles.dss,difference=20,qvalue=0.05,type="all")
 tiles.diff
 
+#Compare the DSS and the logistic regression methods
+
+#****
+
 ```
 
 In addition, if we are interested in particular regions, we can also get those regions as methylKit objects after summarizing the methylation information as described above. The code below summarizes the methylation information over a given set of promoter regions and outputs a methylRaw or methylRawList object depending on the input. We are using the output of genomation functions used above to provide the locations of promoters. For regional summary functions, we need to provide regions of interest as GRanges object.
 
-```{r}
-
-# read the gene BED file
-gene.obj=readTranscriptFeatures(system.file("extdata", "refseq.hg18.bed.txt", 
-                                           package = "methylKit"))
-promoters=regionCounts(myobj,gene.obj$promoters)
-?regionCounts
-head(promoters[[1]])
-gene.obj
-```
-
-In addition, it is possible to cluster DMCs based on their proximity and direction of differential methylation. This can be achieved by methSeg function in methylKit. We will see more about methSeg function in the following section. But it can take the output of getMethylDiff function therefore can work on DMCs to get differentially methylated regions.
 
 
 ## Adding covariates.
@@ -581,18 +774,14 @@ my.diffMeth3=calculateDiffMeth(sim.methylBase,
 my.diffMeth3
 getMethylDiff(my.diffMeth3,difference=10,qvalue=0.01,type="all")
 
+#Include the covariate age to the meth object with c(30, 80, 30, 80)
+# calculate the differential methylation with your favorite parameters
+# how many CpG are DMC ?
 
-covariates <- data.frame(age=c(30, 80, 30, 80))
-my.diffMeth4=calculateDiffMeth(meth,
-                               covariates=covariates,
-                               overdispersion="MN",
-                               test="Chisq",
-                               adjust="SLIM")
-my.diffMeth4
-all.diff4=getMethylDiff(my.diffMeth4,difference=10,qvalue=0.01,type="all")
-all.diff4
+#****
 
 ```
+
 
 
 # 3° Annotation of DMR/DMC
@@ -605,123 +794,16 @@ readGeneric is the workhorse of the genomation package. It is a function develop
 
 ```{r}
 
-browseVignettes("genomation")
-
 # read the gene BED file
-transcriptBED=system.file("extdata", "refseq.hg18.bed.txt", 
-                                           package = "methylKit")
 
-readGeneric(transcriptBED, header=T, keep.all.metadata=F)
-
-gene.obj=readTranscriptFeatures(transcriptBED)
-class(gene.obj)
-gene.obj
-
-?readTranscriptFeatures
-
-# annotate differentially methylated CpGs with 
-# promoter/exon/intron using annotation data
-#
-annotateWithGeneParts(as(all.diff,"GRanges"),gene.obj)
-
-?annotateWithGeneParts
-
-```
-
-Similarly, we can read the CpG island annotation and annotate our differentially methylated bases/regions with them.
-
-````{r}
-
-# read the shores and flanking regions and name the flanks as shores 
-# and CpG islands as CpGi
-cpg.file=system.file("extdata", "cpgi.hg18.bed.txt", 
-                                        package = "methylKit")
-cpg.obj=readFeatureFlank(cpg.file,
-                           feature.flank.name=c("CpGi","shores"))
-head(cpg.obj)
-#
-# convert methylDiff object to GRanges and annotate
-diffCpGann=annotateWithFeatureFlank(as(all.diff,"GRanges"),
-                                    cpg.obj$CpGi,cpg.obj$shores,
-                         feature.name="CpGi",flank.name="shores")
-diffCpGann
-```
-
-We can also summarize methylation information over a set of defined regions such as promoters or CpG islands. The function below summarizes the methylation information over a given set of promoter regions and outputs a methylRaw or methylRawList object depending on the input. We are using the output of genomation functions used above to provide the locations of promoters. For regional summary functions, we need to provide regions of interest as GRanges object.
-
-```{r}
+gene.obj=readTranscriptFeatures(system.file("extdata", "refseq.hg18.bed.txt", 
+                                           package = "methylKit"))
 promoters=regionCounts(myobj,gene.obj$promoters)
-head(promoters[[1]])
-```
+promoters
 
-After getting the annotation of differentially methylated regions, we can get the distance to TSS and nearest gene name using the getAssociationWithTSS function from genomation package.
-
-```{r}
-diffAnn=annotateWithGeneParts(as(all.diff,"GRanges"),gene.obj)
-
-# target.row is the row number in all.diff
-a <- getAssociationWithTSS(diffAnn)
-a
-
-?getAssociationWithTSS
-```
-
-It is also desirable to get percentage/number of differentially methylated regions that overlap with intron/exon/promoters
-
-```{r}
-
-getTargetAnnotationStats(diffAnn,percentage=TRUE,precedence=TRUE)
+#How many CpGs are in exons of test 1 ?
 
 ```
 
-We can also plot the percentage of differentially methylated bases overlapping with exon/intron/promoters
-
-```{r}
-
-plotTargetAnnotation(diffAnn,precedence=TRUE,
-    main="differential methylation annotation")
-```
-
-We can also plot the CpG island annotation the same way. The plot below shows what percentage of differentially methylated bases are on CpG islands, CpG island shores and other regions.
-
-
-```{r}
-
-plotTargetAnnotation(diffCpGann,col=c("green","gray","white"),
-       main="differential methylation annotation")
-```
-
-It might be also useful to get percentage of intron/exon/promoters that overlap with differentially methylated bases.
-
-```{r}
-
-getFeatsWithTargetsStats(diffAnn,percentage=TRUE)
-
-```
-
-
-We can also read gtf format files
-
-```{r}
-
-gff.file = system.file("extdata/chr21.refseq.hg19.gtf", package = "genomation")
-
-gff = gffToGRanges(gff.file)
-
-head(gff)
-class(gff)
-
-gffsplit=as(split(gff, gff$type), "GRangesList")
-gffsplit[[1]]
-
-all.diffG <- as(all.diff, "GRanges")
-
-annotateWithFeatures(all.diffG,gffsplit)
-
-annotateWithGeneParts(all.diffG,gffsplit)
-
-?annotateWithGeneParts
-
-```
 
 
