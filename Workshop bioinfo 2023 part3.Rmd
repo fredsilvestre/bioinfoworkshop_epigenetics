@@ -1,16 +1,16 @@
 ---
-title: "DNA methylation workflow - workshop 2023 part3"
+title: "DNA methylation workflow - workshop 2025 part3"
 author: "Frederic Silvestre"
-date: "17/1/2023"
+date: "20/02/2025"
 output: html_document
 ---
 
 This part3 of the DNA methylation workflow aims to work on real RAW data obtained after RRBS bisulfite sequencing using an Ilumina sequencer. The data consists in 6 libraries of mangrove rivulus brain sampled in 2019 in two wild population: EPP (Emerson Point Preserve in Florida ; TC (Twin Cayes in Belize).
 
-ID of fish from Twin Caye: Brain2, 3, 4
-ID of fish from EPP: ID Brain69, 71, 73
+ID of fish from Twin Caye: Brain 2, 3, 4
+ID of fish from EPP: ID Brain 69, 71, 73
 
-The RAW files are in the file "fastq" with the name "Brain2.fastq.gz"
+The RAW files are in the file "fastq" with the name "BrainX.fastq.gz"
 
 For the scientific background, see the presentation.
 
@@ -18,58 +18,110 @@ For the scientific background, see the presentation.
 
 # 0° Preparation of the working environment
 
-## General setup of RMarkdown chunks and common shortcuts (for MacOS)
 
-```{r setup}
-if(!requireNamespace("knitr", quietly=TRUE))
-        install.packages("knitr")
-library(knitr)
-if(!requireNamespace("rmarkdown", quietly=TRUE))
-        install.packages("rmarkdown")
-library(rmarkdown)
+## Install R v4.4 and update RStudio
 
-knitr::opts_chunk$set(eval=F, results="hide", echo = TRUE, include=TRUE, warning=TRUE, error=TRUE)
-```
 
-Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
-Option/Command I to create a chunk  
-Shift/option ( to [  
-Option ( to {  
-| shift/option L  
-~ option n  
-double space to change the paragraph  
-to open /var folder > command + shift + G (write /var)  
+https://www.listendata.com/2015/08/how-to-update-r-software.html 
 
-## Set working directory 
+Go to the CRAN website.
+For Windows Users - https://cran.r-project.org/bin/windows/base/.
+For Mac Users - https://cran.r-project.org/bin/macosx/
+Download the latest R installer.
+Run the installer, and it will guide you through the installation process.
+After updating R, open RStudio. Close RStudio if it is already opened and open it again.
+RStudio will automatically detect the updated R version. Run this command R.version.string to check the R version RStudio is using.
 
-```{r eval=T}
-getwd()
-setwd("*****") # adapt to your computer
-ls()
-rm(list = ls())
-tempdir() #where to save all the data from R
-dev.off() #to reset the graph device options
+The R packages are located in (for mac users) : computername/Library/Frameworks/R.framework/Versions/X.XX/Resources/library
+
+Copy all the old R version packages to the new version. Update the packages.
+
+Install the last version of R studio:
+https://posit.co/download/rstudio-desktop/ 
+
+```{r eval=F}
+
+R.version.string
+#you can also use the command line R --version
+
+options(repos = c(CRAN = "https://cloud.r-project.org/")) #seta  CRAN mirror (repository URL) to check for package updates
+
+update.packages(ask=F)
+
+packageStatus()
+
 sessionInfo()
 
 ```
 
-## Install R v4.2 and update RStudio
+
+## General setup of RMarkdown chunks and common shortcuts (for MacOS)
 
 
-## Install Bioconductor 3.16 and requested packages
+```{r eval=F}
+if(!requireNamespace("knitr", quietly=TRUE)){
+        install.packages("knitr")
+library(knitr)}
+
+if(!requireNamespace("rmarkdown", quietly=TRUE)){
+        install.packages("rmarkdown")
+library(rmarkdown)}
+
+if(!requireNamespace("tinytex", quietly=TRUE)) { #this package will permit to knit into a pdf file
+library(tinytex) }
+tinytex::install_tinytex()
+
+```
+
+```{r eval=T}
+knitr::opts_chunk$set(eval=F, results="markup", echo = T, warning=F, error=T)
+```
+
+Change the general options in each chunk: eval=T (run the chunk); results=markup (show the results) or hide ; echo=T (show the code) ; include=T (include the chunk)    
+Option/CTL I to create a chunk  
+Shift/option ( to [ 
+Option ( to { 
+| shift/option L  
+~ option n  
+shift/option/command G > go to line xxx
+double space to change the paragraph  
+
+
+## Set working directory 
+
+
+```{r}
+setwd("/Users/fsilvest/Documents/bioinformatic_workshop/") # adapt to your computer
+getwd()
+
+ls()
+rm(list = ls())
+
+tempdir() #where to save temporary data from R
+list.files(tempdir())
+unlink(tempdir(), recursive = TRUE) #often, we must restart Rstudio
+
+dev.off() #to reset the graph device options
+
+```
+
+
+## Install Bioconductor 3.20 and requested packages
+
 
 Bioconductor: https://www.bioconductor.org/
+https://www.bioconductor.org/install/ 
+
 search for available packages: https://www.bioconductor.org/packages/release/BiocViews.html#___Software
 
 ```{r}
 # Check the version of BiocManager on your computer
 BiocManager::version()
 
-if(!requireNamespace("BiocManager", quietly=TRUE))
-        install.packages("BiocManager")
-BiocManager::install(version="3.16")
-
-library(BiocManager)
+if (!require("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+BiocManager::install(version = "3.20")
+library(BiocManager)}
 
 #To check the number of packages available in Bioconductor
 avail <- BiocManager::available()
@@ -77,39 +129,61 @@ length(avail)
 
 #update your packages
 BiocManager::install()
+```
 
-install.packages("stringi",type="mac.binary") #if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
-library(stringi)
 
-if(!requireNamespace("pacman", quietly=TRUE)) #the package pacman allows to install and load several packages from Cran at once if they're not installed.
-        install.packages("pacman")
-library(pacman)
+```{r}
+#if (!require("stringi", quietly = TRUE)) {
+#      install.packages("stringi",type="mac.binary") 
+#      library(stringi)}
 
-BiocManager::install(c("Rqc", "methylKit", "ShortRead", "QuasR"))
-pacman::p_load(Rqc, methylKit, ShortRead, QuasR, remotes, factoextra)
+#mac.binary > if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
 
-BiocManager::install("methylKit", force=T) # if it does not work
+bioc_packages <- c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "GenomicFeatures", "SGSeq", "qvalue", "pwalign", "methylKit", "ShortRead","genomation", "remotes", "txdbmaker", "fastqcr", "Rqc", "QuasR")  
+
+cran_packages <- c("factoextra", "gridExtra", "ggplot2", "psych", "diptest")
+
+
+for (pkg in bioc_packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+        BiocManager::install(pkg, ask = FALSE)
+    }
+    library(pkg, character.only = TRUE)
+}
+
+
+for (pkg in cran_packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+        install.packages(pkg, dependencies = TRUE)
+    }
+    library(pkg, character.only = TRUE)
+}
 
 ```
 
+
 ## To obtain help
+
 
 ```{r}
 
 ?mean
 help.start()
-help(package = "methylKit")
-vignette("methylKit")
-browseVignettes("methylKit")
+help(package = "GenomicRanges")
+vignette()
+vignette("ExpressionSetIntroduction")
+browseVignettes("GenomicRanges")
 
 ```
 
+
 ## To save and load R objects
+
 
 ```{r}
 
-saveRDS(tiles, file="tiles1.RDS")
-b <- readRDS("tiles1.RDS")
+saveRDS(tiles, file="RDS/tiles1.RDS")
+b <- readRDS("RDS/tiles1.RDS")
 
 ```
 
@@ -120,21 +194,40 @@ b <- readRDS("tiles1.RDS")
 Working with FastQ files
 Usually, we work with FastQC app or multi FASTQC (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).
 
-![Phred values](images/Phred.png)
 
-![FASTQ sequence](images/Phred2.png)
+```{r}
+#to verify if the image exists and the full pathway
+file.exists("images/Phred.png")
+normalizePath("images/Phred.png")
+
+```
+
+![Phred values](/Users/fsilvest/Documents/bioinformatic_workshop/images/Phred.png)
+
+![FASTQ sequence](/Users/fsilvest/Documents/bioinformatic_workshop/images/Phred2.png)
+
+Example of quality check option using Rqc package.
+
+In the package Rqc, we must load fastq.gz files. If we start from fasta.gz, we can convert it using the lines below from the package ShortRead.
+
+```{r}
+# Read fasta file
+fasta_data <- readFasta("input.fasta.gz")
+
+# Convert and write to FASTQ
+writeFastq(fasta_data, "output.fastq.gz", compress=TRUE)
+```
+
 
 
 ```{r}
 
 folder <- system.file(package="ShortRead", "extdata/E-MTAB-1147") #example dataset
 
-folder <- "/Users/fsilvestre/bioinformatic_workshop/RAW_data_Florida_Belize/fastq/" #real dataset
-
 ?rqc
 vignette("Rqc")
 
-qcRes <- rqc(path=folder, pattern=".fastq.gz", openBrowser=FALSE)
+qcRes <- rqc(path=folder, pattern=".fastq.gz", openBrowser=F)
 perFileInformation(qcRes)
 
 saveRDS(qcRes, file="RAW_data_Florida_Belize/RDS/qcRes.RDS")
@@ -149,10 +242,11 @@ rqcCycleQualityPlot(qcRes)
 rqcCycleAverageQualityPcaPlot(qcRes)
 rqcCycleBaseCallsLinePlot(qcRes)
 
-#we can save the analysis in a html report
+# we can run and save the analysis in a html report
 
 files <- list.files(folder, "fastq.gz", full.names=TRUE)
 qa <- rqcQA(files, workers=1)
+qa
 
 saveRDS(qa, file="RAW_data_Florida_Belize/RDS/qa.RDS")
 qa <- readRDS("RAW_data_Florida_Belize/RDS/qa.RDS")
@@ -161,9 +255,43 @@ reportFile <- rqcReport(qa)
 saveRDS(reportFile, file="RAW_data_Florida_Belize/RDS/reportFile.RDS")
 readRDS("RAW_data_Florida_Belize/RDS/reportFile.RDS")
 browseURL(reportFile)
+system(paste("open", reportFile))  # For macOS
 
+
+```
+
+**How to interpret the ReadFrequency graph ?**
+
+Most Reads Appear Once
+
+In a typical, high-complexity library, you expect a large proportion of reads to be unique (frequency = 1).
+The bar or point at frequency = 1 is often the highest on the plot.
+Reads with Higher Frequencies
+
+If you see a significant spike in reads that appear 10, 50, or 100 times (etc.), it suggests duplication.
+Moderate duplication (a small tail at higher frequencies) can be normal, especially in targeted sequencing (amplicon-based) or if your sample is highly expressed in certain transcripts.
+Excessive Duplication
+
+A large portion of reads with very high frequencies can indicate technical artifacts (PCR over-amplification, adapter contamination).
+In severe cases, you might need to remove duplicates or improve library prep methods.
+
+
+**Analyse the sequencing quality of the rivulus samples and compare the results to the example files above.**
+
+```{r}
+
+folderkm <- "/Users/fsilvest/Documents/bioinformatic_workshop/RAW_data_Florida_Belize/fastq/" #real dataset
+list.files(folderkm)
+
+
+#*****
+
+```
+
+```{r}
 
 # we can analyse a single sample and work on the sequence
+
 fq <- readFastq("RAW_data_Florida_Belize/fastq/Brain2.fastq.gz") #long time
 fq
 
@@ -182,25 +310,19 @@ qPerBase=as(quality(fq[1]), "matrix")
 qPerBase
 qcount=rowSums(qPerBase<=20)
 qcount
-```
 
-
-We can use the package fastqcr to aggregate several FASTQC reports in .zip
-http://www.sthda.com/english/wiki/fastqcr-an-r-package-facilitating-quality-controls-of-sequencing-data-for-large-numbers-of-samples 
-
-```{r}
-install.packages("fastqcr")
-library("fastqcr")
 ```
 
 
 
-# 2° Filter et trim the reads
+# 2° Filter and trim the reads
 
 We must trim the reads to increase the quality to have a good alignment. For that, we usually use TRIM GALORE (which is using CUTADAPT)
 	- remove adapters
 	- remove low quality nucleotides (< 20)
 	- remove the end-repaired C at the extremity (--rrbs)
+	
+To help installing Trim Galore ! : https://github.com/FelixKrueger/TrimGalore 
 	
 Alternatively, we can use QuasR but less good for RRBS.
 
@@ -214,6 +336,9 @@ fastqFiles <- system.file(package="ShortRead",
                             "ERR127302_2_subset.fastq.gz"))
 outfiles <- paste(tempfile(pattern=c("processed_1_",
                                      "processed_2_")),".fastq", sep="")
+
+?preprocessReads
+
 preprocessReads(fastqFiles, outfiles,
                 nBases=1,
                 truncateEndBases=3,
@@ -223,15 +348,35 @@ preprocessReads(fastqFiles, outfiles,
 fastqFile <- system.file(package="ShortRead",
                           "extdata/E-MTAB-1147",
                           "ERR127302_1_subset.fastq.gz")
+
 fq <- readFastq(fastqFile)
 qPerBase=as(quality(fq), "matrix")
 qcount=rowSums(qPerBase<=20)
 fq[qcount==0]
 writeFastq(fq[qcount==0],
-           paste(fastqFile, "Qfiltered", sep="_")) #réécrire un nouveau fichier fastq
+           paste(fastqFile, "Qfiltered", sep="_")) 
 
 #with real samples (too long)
 preprocessReads(filename = "RAW_data_Florida_Belize/fastq/Brain2.fastq.gz", outputFilename="RAW_data_Florida_Belize/fastq/Brain2trimQuasR.fastq.gz", truncateEndBases= 2, nBases=1, minLength=40, Lpattern="AGATCGGAAGAG")
+
+qcReskmtrim <- rqc(path="RAW_data_Florida_Belize/fastq_trim", pattern=".fastq.gz", openBrowser=FALSE) #takes time
+perFileInformation(qcReskmtrim)
+
+rqcReadQualityBoxPlot(qcReskmtrim)
+rqcReadQualityPlot(qcReskmtrim)
+rqcCycleAverageQualityPlot(qcReskmtrim)
+rqcReadFrequencyPlot(qcReskmtrim)
+rqcCycleQualityPlot(qcReskmtrim)
+rqcCycleAverageQualityPcaPlot(qcReskmtrim)
+rqcCycleBaseCallsLinePlot(qcReskmtrim)
+
+files <- list.files("RAW_data_Florida_Belize/fastq_trim", "fastq.gz", full.names=TRUE)
+qakm <- rqcQA(files, workers=1) #takes time
+qakm
+
+reportFilekm <- rqcReport(qakm)
+
+browseURL(reportFilekm)
 
 #Illumina univeral adaptor= AGATCGGAAGAG
 
@@ -239,8 +384,9 @@ preprocessReads(filename = "RAW_data_Florida_Belize/fastq/Brain2.fastq.gz", outp
 
 The result of the trimming of Brain2 can be summarized here:
 
-![Trim Brain2](images/tabletrimBrain2.png)
-After trimming and quality control, we can aligned the sequences to the reference genome. For BiSeq, we use Bismark (which is using Bowtie2): https://www.bioinformatics.babraham.ac.uk/projects/bismark/ 
+![Trim Brain2](/Users/fsilvest/Documents/bioinformatic_workshop/images/tabletrimBrain2.png)
+
+After trimming and quality control, we can align the sequences to the reference genome. For BiSeq, we use Bismark (which is using Bowtie2): https://www.bioinformatics.babraham.ac.uk/projects/bismark/ 
 
 A reference genome assembly must be first downloaded. For rivulus, the last genome assembly (RefSeq assembly accession: GCF_001649575.2 ) can be found here: https://www.ncbi.nlm.nih.gov/data-hub/genome/GCF_001649575.2/
 
@@ -280,7 +426,8 @@ When you align FASTQ files with all current sequence aligners, the alignments pr
 ./samtools/samtools sort CTL1.bam -o CTL1.sorted.bam
 
 
-# 2° Working in methylKit
+
+# 3° Working in methylKit
 
 ## Importing the data in methylKit
 
@@ -293,8 +440,6 @@ The file has been saved in the txt file to save time: 2_CpG.txt, etc
 
 
 ```{r}
-
-vignette("methylKit")
 
 file.list <- list( "Brain2.sorted.bam", "Brain3.sorted.bam", "Brain4.sorted.bam","Brain69.sorted.bam", "Brain71.sorted.bam", "Brain73.sorted.bam")
 
@@ -329,60 +474,43 @@ myobj <- readRDS("RAW_data_Florida_Belize/RDS/TC-EPP.RDS")
 
 myobj
 
+#how many CpG are there ?
+
 ```
 
-Between 1 312 273 and 1 712 975 rows > CpG
 
 ## Analyse the CpG on each file and filter to get rid of the low quality
 
 ```{r}
-
-?getMethylationStats
-
-par(mfrow = c(2,3))
-for(a in 1:6) {getMethylationStats(myobj[[a]], plot=T, strands = F)}
-par(mfrow=c(1,1))
+#analyse the 6 graphs and extract the median values for each sample.
 
 getMethylationStats(myobj[[1]],plot=TRUE,both.strands=F)
 
-```
-
-```{r}
-
-par(mfrow = c(2,3))
-for(a in 1:6) {getCoverageStats(myobj[[a]], plot=T, strands = F)}
-par(mfrow=c(1,1))
-
-getCoverageStats(myobj[[1]],plot=T,both.strands=FALSE)
-getCoverageStats(myobj[[6]],plot=F,both.strands=FALSE)
+#****
 
 ```
 
+
 ```{r}
-?filterByCoverage
 
-filtered.myobj <- filterByCoverage(myobj,lo.count=**,lo.perc=**,
-                                      hi.count=**,hi.perc=**)
+#Get the 6 graphs for the coverage values
 
-par(mfrow = c(2,3))
-for(a in 1:6) {getCoverageStats(filtered.myobj[[a]], plot=T, strands = F)}
-par(mfrow=c(1,1))
+#****
 
-getCoverageStats(filtered.myobj[[2]],plot=T,both.strands=FALSE)
-getCoverageStats(filtered.myobj[[4]],plot=F,both.strands=FALSE)
+```
 
-filtered.myobj
+
+```{r}
+
+# filter your object with lo.count=10 and hi.perc=99.9
+
 
 #we can be more stringent and take a min coverage of 20
-filtered.myobj20 <- ***
 
-par(mfrow = c(2,3))
-for(a in 1:6) {getCoverageStats(filtered.myobj20[[a]], plot=T, strands = F)}
-par(mfrow=c(1,1))
+
+#what are the differences between filtered by 10 or 20 ?
 
 ```
-
-Between 1 310 958 and 1 711 258 rows > CpG
 
 
 
@@ -391,7 +519,6 @@ Between 1 310 958 and 1 711 258 rows > CpG
 We can set a minimum number of samples covered min.per.group (1L, 2L, 3L)
 
 ```{r}
-?methylKit::unite
 
 meth <- methylKit::unite(filtered.myobj, destrand=T, min.per.group = NULL)
 meth
@@ -402,69 +529,27 @@ meth2L
 meth20 <- methylKit::unite(filtered.myobj20, destrand=T, min.per.group = NULL)
 meth20
 
+#compare the number of CpG analyzed with different parameters of min.per.group and coverage. What is the best option to chose ?
+
 ```
-There are 691 258 CpG analyzed in the unite object for CpG in all samples.
-If we limit to minimum 2 samples, we have 1 077 721 CpG
-If we take a min coverage of 20, we have 269 230 CpG only
 
 
-## See the variability of each CpG and get the percentage methylation Matrix
+## Explore the variability of each CpG
 
 ```{r}
 
-?percMethylation
-
-pm=percMethylation(meth) # get percent methylation matrix ; only on CpG in all samples
-head(pm)
-summary(pm)
-
-#calculate the coefficient of variation for each CpG in TC and in EPP
-CV <- function(x){sd(x)/mean(x)*100}
-
-TC <- apply(pm[,1:3], MARGIN=1,FUN = CV)
-head(TC)
-summary(TC)
-EPP <- apply(pm[,4:6], MARGIN=1,FUN = CV)
-summary(EPP)
-CVall <- apply(pm[,1:6], MARGIN=1,FUN = CV)
-summary(CVall)
-
-hist(CVall)
+# What are the mean CV for TC, EPP and all together ?
 
 ```
-mean CV TC: 34.36
-mean CV EPP: 29.78
-mean CV all: 44.01
+
 
 
 ## PCA and clustering 
 
 Only on a matrix with no NA (CpG in all samples)
 
-```{r}
+**Make a clustering and a PCA analysis**
 
-getCorrelation(meth,plot=F)
-
-```
-
-```{r}
-
-clusterSamples(meth, dist="correlation", method="ward", plot=TRUE)
-
-```
-
-```{r}
-?PCASamples
-
-pc <- PCASamples(meth,obj.return = T, adj.lim=c(1,1), comp = c(1,2))
-
-
-# Eigenvalues
-eig.val <- get_eigenvalue(pc)
-eig.val
-fviz_eig(pc)
-
-```
 
 
 ## Extracting regions of interest
@@ -485,19 +570,17 @@ Length of fish 2: 4.036 ; 3:  2.187 ; 4: 2.288 ; 69: 3.322 ; 71: 3.552 ; 73: 2.8
 
 ```{r}
 
-?calculateDiffMeth
-
 lengthcov <- c(4.036, 2.187,2.288, 3.322, 3.552, 2.841)
 sampleIDs <- c(2,3,4,69,71,73)
 covar <- data.frame(sampleID = sampleIDs, length = lengthcov) 
 covar
 
-dm.lr <- calculateDiffMeth(meth, overdispersion = "MN",test ="Chisq", covariate=covar, adjust = "SLIM")
+dm.lr <- calculateDiffMeth(meth, overdispersion = "MN",test ="Chisq", covariate=covar, adjust = "SLIM") #takes long time
 
 dm.lr
 
 saveRDS(dm.lr, file="RAW_data_Florida_Belize/RDS/DMClr.RDS")
-dm.lr <- readRDS("RAW_data_Florida_Belize/RDS/DMClr.RDS")
+dm.lr <- readRDS(file = "RAW_data_Florida_Belize/RDS/DMClr.RDS" )
 
 ```
 
@@ -514,31 +597,16 @@ dm.dss
 
 Determine the cutoffs
 
+**Make a selection of CpG based on your chosen parameters and save it in a csv file.**
+
 ```{r}
 
-?getMethylDiff
-
-# get differentially methylated bases/regions with specific cutoffs
-all.diff=getMethylDiff(dm.lr,difference=10,qvalue=0.01,type="all")
-all.diff
-summary(all.diff)
-
-# get hyper-methylated
-hyper=getMethylDiff(dm.lr,difference=10,qvalue=0.01,type="hyper")
-hyper
-
-# get hypo-methylated
-hypo=getMethylDiff(dm.lr,difference=10,qvalue=0.01,type="hypo")
-hypo
 
 #export the results in CSV file to visualize in SeqMonq
 write.csv2(all.diff, file = "RAW_data_Florida_Belize/CSV/DMR_EPP_TC_all.csv")
-write.csv2(dm.lr, file = "RAW_data_Florida_Belize/CSV/analyzed_regions_EPP_TC.csv")
 
-
+#what is the % of CpG that are differentially methylated ?
 ```
-
-We found 3545 DMCs > 3545/691258*100 = 0.51% differentially methylated
 
 
 
@@ -616,31 +684,7 @@ saveRDS(tiles.diff, file="RAW_data_Florida_Belize/RDS/tiles.diff.RDS")
 ```
 
 
-# 3° Annotation
+# 4° Annotation
 
-```{r}
-
-BiocManager::install(c("genomation", "rtracklayer", "bedr", "GenomicRanges"))
-
-pacman::p_load(genomation, rtracklayer, GenomicTools, bedr, GenomicRanges)
-
-GTF <- rtracklayer::import('RAW_data_Florida_Belize/Sequences/GTF/genomic.gtf')
-length(GTF)  
-class(GTF)
-head(GTF)
-unique(GTF$type)
-unique(GTF$gene_id)
-
-GTFsplit=as(split(GTF, GTF$type), "GRangesList")
-length(GTFsplit)
-GTFsplit
-GTFsplit[[6]]
-
-all.diffG <- as(all.diff, "GRanges")
-
-annotateWithFeatures(all.diffG,GTFsplit)
-
-```
-! GenomicTools is not supported in CRAN anymore
-
+**cfr SeqMonk
 
