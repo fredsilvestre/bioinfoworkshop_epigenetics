@@ -1,8 +1,8 @@
 # bioinfoworkshop_epigenetics
 
-This workshop is organized in February as part of the course "Ecological Proteomics and Epigenetics (SBOEM169)" in the master program in Organism Biology and Ecology from the University of Namur and the University of Louvain-la-Neuve (Belgium).  
+This workshop is organized in February as part of the course "Environmental Epigenetics (SBOEM115)" (module "Molecular Ecology and Biodiversity Genomics") in the master program in Organism Biology and Ecology from the University of Namur and the University of Louvain-la-Neuve (Belgium).  
 
-The goal is to learn a workflow to analyse DNA methylation data from high throughput bisulfite sequencing (we're using RRBS examples). It is divided in 3 parts, each of half day. The scripts of each part are available in the repository (Workshop bioinfo 2025 partX.Rmd). 
+The goal is to learn a workflow to analyse DNA methylation data from high throughput bisulfite sequencing (we're using RRBS examples). It is divided in 4 parts. The scripts of each part are available in the repository (Workshop bioinfo 2026 partX.Rmd). 
 
 The students should be familiar with RStudio environment and basic functions and syntax (ex:how to install and load packages, etc). The beginning of the workshop is dedicated to setup Bioconductor, to create a RMarkdown document, and to work with sequences and genomic objects. 
 
@@ -36,3 +36,6 @@ The students should be familiar with RStudio environment and basic functions and
 - DNA methylation analysis on real data with the methylkit package
 - Data visualisation (SeqMonk)
 
+# Part4:
+
+- Using RRBS data to build an epigenetic clock
