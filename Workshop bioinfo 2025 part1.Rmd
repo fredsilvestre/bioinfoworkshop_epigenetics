@@ -1,7 +1,7 @@
 ---
-title: "Working with bioconductor - workshop 2025 part1"
+title: "Working with bioconductor - workshop 2026 part1"
 author: "Frédéric Silvestre"
-date: "11/02/2025"
+date: "30/01/2026"
 output:
   pdf_document: default
   html_document: default
@@ -13,10 +13,7 @@ This first part of the workshop aims to introduce bioconductor packages and to w
 # 0° Preparation of the working environment
 
 
-## Install R v4.4 and update RStudio
-
-
-https://www.listendata.com/2015/08/how-to-update-r-software.html 
+## Install R v4.5.2 and update RStudio
 
 Go to the CRAN website.
 For Windows Users - https://cran.r-project.org/bin/windows/base/.
@@ -28,6 +25,7 @@ RStudio will automatically detect the updated R version. Run this command R.vers
 
 The R packages are located in (for mac users) : computername/Library/Frameworks/R.framework/Versions/X.XX/Resources/library
 
+Optional:
 Copy all the old R version packages to the new version. Update the packages.
 
 Install the last version of R studio:
@@ -38,9 +36,12 @@ https://posit.co/download/rstudio-desktop/
 R.version.string
 #you can also use the command line R --version
 
-options(repos = c(CRAN = "https://cloud.r-project.org/")) #seta  CRAN mirror (repository URL) to check for package updates
+old.packages()
 
-update.packages(ask=F)
+#Optional if there is "no repository set":
+#options(repos = c(CRAN = "https://cloud.r-project.org/")) #seta  CRAN mirror (repository URL) to check for package updates
+
+update.packages(checkBuilt = TRUE, ask = FALSE)
 
 packageStatus()
 
@@ -53,6 +54,7 @@ sessionInfo()
 
 
 ```{r eval=F}
+
 if(!requireNamespace("knitr", quietly=TRUE)){
         install.packages("knitr")
 library(knitr)}
@@ -61,9 +63,15 @@ if(!requireNamespace("rmarkdown", quietly=TRUE)){
         install.packages("rmarkdown")
 library(rmarkdown)}
 
-if(!requireNamespace("tinytex", quietly=TRUE)) { #this package will permit to knit into a pdf file
+if(!requireNamespace("tinytex", quietly=TRUE)) { 
+        install.packages("tinytex")
 library(tinytex) }
-tinytex::install_tinytex()
+#this package will permit to knit into a pdf file
+
+if(!tinytex:::is_tinytex()){
+    tinytex::install_tinytex()
+}
+# Install the LaTeX distribution (only needs to be done once)
 
 ```
 
@@ -84,23 +92,25 @@ double space to change the paragraph
 ## Set working directory 
 
 
-```{r}
-setwd("XXXXX") # adapt to your computer
+```{r eval=T}
+setwd("/Users/fsilvest/Dropbox/studentpack_2026") # adapt to your computer
 getwd()
 
 ls()
 rm(list = ls())
 
-tempdir() #where to save temporary data from R
-list.files(tempdir())
-unlink(tempdir(), recursive = TRUE)
+#tempdir() #where to save temporary data from R
+#list.files(tempdir())
 
-dev.off() #to reset the graph device options
+#unlink(tempdir(), recursive = TRUE) # To clean the tempdir. The temp directory usually cleans itself up when you close R. Only use this if you're experiencing specific issues with temp files, and always restart R immediately afterward
+
+#dev.list()
+#dev.off() #to reset the graph device options
 
 ```
 
 
-## Install Bioconductor 3.20 and requested packages
+## Install Bioconductor 3.22 and requested packages
 
 
 Bioconductor: https://www.bioconductor.org/
@@ -111,15 +121,24 @@ search for available packages: https://www.bioconductor.org/packages/release/Bio
 ```{r}
 # Check the version of BiocManager on your computer
 BiocManager::version()
+vignette("BiocManager", package = "BiocManager")
+
 
 if (!require("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
-BiocManager::install(version = "3.20")
+BiocManager::install(version = "3.22")
 library(BiocManager)}
+
+#options(repos = BiocManager::repositories())
+#getOption("repos")
+#BiocManager::repositories()
 
 #To check the number of packages available in Bioconductor
 avail <- BiocManager::available()
 length(avail)
+
+#Try to install a package
+BiocManager::install("Biostrings")
 
 #update your packages
 BiocManager::install()
@@ -133,7 +152,7 @@ if (!require("stringi", quietly = TRUE)) {
 
 #mac.binary > if an error message appears (aucun package nommé ‘stringi’ n'est trouvé)
 
-bioc_packages <- c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "SummarizedExperiment", "airway", "GenomicFeatures", "SGSeq", "qvalue", "pwalign", "rtracklayer")  
+bioc_packages <- c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "SummarizedExperiment", "airway", "GenomicFeatures", "SGSeq", "qvalue", "pwalign")  
 
 for (pkg in bioc_packages) {
     if (!require(pkg, quietly = TRUE)) {
@@ -146,7 +165,6 @@ for (pkg in bioc_packages) {
 
 
 ## To obtain help
-
 
 ```{r}
 
@@ -169,6 +187,8 @@ saveRDS(tiles, file="RDS/tiles1.RDS")
 b <- readRDS("RDS/tiles1.RDS")
 
 ```
+
+
 
 
 # 1° Working with sequences
@@ -265,6 +285,7 @@ matchPattern("CG", DNA)  # Find occurrences of "CG" in DNA
 mp <- matchPattern("CG", DNA22)  # Find occurrences of "CG" in DNA22
 class(mp)
 length(mp)
+DNA22
 
 ```
 
@@ -301,6 +322,13 @@ alignment3
 
 ```
 
+Which type to choose?
+
+Global: When comparing full-length sequences (e.g., comparing two genes)
+Local: When looking for conserved domains or motifs
+Overlap: Finding where two sentence fragments join together
+
+
 
 ## Importing and exporting FASTA files
 
@@ -309,7 +337,7 @@ Seq in FASTA format of the gene MeCP2 of mangrove rivulus (downloaded from https
 
 ```{r}
 
-seqs2 <- readDNAStringSet(filepath="RAW_data_Florida_Belize/Sequences/mecp2.fa", format="fasta") 
+seqs2 <- readDNAStringSet(filepath="Sequences/mecp2.fa", format="fasta") 
 
 seqs2
 names(seqs2)
@@ -317,6 +345,7 @@ class(seqs2)
 length(seqs2)
 width(seqs2)
 
+#write your sequence in a fasta file
 writeXStringSet(DNA4, "DNA.fasta")
 seqs21 <- readDNAStringSet(filepath="DNA.fasta", format="fasta") 
 seqs21
@@ -327,8 +356,7 @@ subseq1 <- subseq(seqs2, 7327,7333)
 subseq1
 class(subseq1)
 
-subseq2 <- vmatchPattern("TAAGAAGTTTACAC", seqs2)
-subseq2
+vmatchPattern("TAAGAAGTTTACAC", seqs2)
 
 subseq2 <- subseq(seqs2, 934,947)
 subseq2
@@ -344,6 +372,7 @@ letterFrequency(seqs2,"GC")/width(seqs2) #GC contain
 
 dinucleotideFrequency(seqs2)
 
+# translate to amino acid
 translate(subseq1)
 
 #Subset the sequence between position 3000 and 3100
@@ -360,14 +389,21 @@ subseq3
 
 #combine the 2 sequences of MeCP2 gene (subseq1 and subseq2) in 2 DNAStringSet object of length 1, and in 1 DNAStringSet object of length 2
 
-singleseq2 <- c(unlist(subseq2), unlist(subseq1))
+singleseq2 <- c(unlist(subseq2), unlist(subseq1)) #unlist to transform DNAStringSet object into a DNAString object
 singleseq2
+
 seqlist2 <- list(subseq2, subseq1)
 seqlist2
+
+# sort the length of each sequence
 widths2 <- sapply(seqlist2, function(x) sum(width(x)))
 widths2
+
+#isolate sequences of each sorted length
 seqviews2 <- successiveViews(singleseq2, widths2)
 seqviews2
+
+#reconstruct a DNAStringSet object with the 2 sequences
 seqstring2 <- as(seqviews2, "DNAStringSet")
 seqstring2
 
@@ -376,6 +412,20 @@ seqstring2
 
 # 2° Work with set of genes: GRanges
 
+A GRanges object is a fundamental data structure in Bioconductor (R's bioinformatics ecosystem) for working with genomic intervals or ranges.
+At its core, a GRanges object stores genomic locations with three essential pieces of information:
+1. Chromosome (seqnames) - which chromosome the region is on (like "chr1", "chr2", etc.)
+2. Ranges - the start and end positions on that chromosome
+3. Strand - whether the feature is on the positive (+), negative (-), or unspecified (*) strand
+You can also attach additional metadata columns to store extra information about each range, like gene names, scores, or any other annotations.
+GRanges objects are particularly useful because they come with many built-in operations for genomic analysis, such as finding overlaps between ranges, calculating distances, subsetting by genomic location, and merging intervals. This makes them essential for tasks like ChIP-seq analysis, RNA-seq, variant calling, and other genomics workflows where you need to work with genomic coordinates efficiently.
+
+Reminder:
+
++ strand (coding):    5'- ATG GCA TTC -3'
+- strand (template):  3'- TAC CGT AAG -5'
+                           ↑ reading direction
+messenger RNA:        5'- AUG GCA UUC -3'
 
 ```{r}
 
@@ -398,14 +448,23 @@ getSeq(myset, range1)
 
 mcols(range1)$wobble <- 10 #create metadata columns
 range1
-seqinfo(range1)
+
 range2 <- GRanges(c("chrZ","chrY"), IRanges(start=c(5,10), end=c(35,45)), strand="+")
 range2
 range3 <- c(range1, range2)
 range3
 range3[1:2,]
 
+
+#Exercice: Create a GRanges object with 2 sequences on chromosomes 2 and 7, ranges 46-89 and 23-90, on strand + and -.
+
+XXXX
+XXXX
+
 ```
+
+Rle = Run-Length Encoding
+
 
 
 ## Download gtf file from your species: http://www.ensembl.org/Kryptolebias_marmoratus/Info/Index
@@ -431,12 +490,14 @@ Column #	Column Name	Description
 
 ```{r}
 
-features <- import("RAW_data_Florida_Belize/Sequences/genomic.gtf")
+features <- import("Sequences/genomic.gtf")
 features
+
 mcols(features) <- mcols(features)[,c("type","gene","gene_id")]
 unique(features$gene)
 features
 class(features)
+
 mecp2 <- subset(features, gene=="mecp2")
 mecp2
 
@@ -448,7 +509,18 @@ exon
 
 ## To find references for different species using AnnotationHub
 
-AnnotationHub is an R/Bioconductor package that provides easy access to genomic annotation data from various public sources.
+AnnotationHub is a Bioconductor service that provides centralized access to a huge collection of genomic annotation data.
+What it does:
+Instead of manually downloading annotation files (GTF, FASTA, BED files, etc.) from various websites, AnnotationHub lets you browse and download them directly from R with a few lines of code.
+What's available:
+
+Reference genomes (DNA sequences)
+Gene annotations (GTF/GFF files with gene locations)
+Regulatory elements (enhancers, promoters, TFBS)
+Epigenetic data (ChIP-seq peaks, histone marks)
+Conservation scores
+Variant databases
+And much more...
 
 ```{r}
 
@@ -480,8 +552,8 @@ records
 table(records$genome)
 table(records$sourcetype)
 mcols(records)[,c("title", "rdataclass", "sourcetype")]
-km <- ah[["AH64640"]]
 
+km <- ah[["AH64640"]]
 km
 
 ```
@@ -493,7 +565,7 @@ An ExpressionSet is a specialized data structure in Bioconductor used to store g
 
 ```{r}
 
-exprs <- as.matrix(read.table("RAW_data_Florida_Belize/Sequences/expressiondata.txt", header=TRUE, sep="\t", row.names=1))
+exprs <- as.matrix(read.table("Sequences/expressiondata.txt", header=TRUE, sep="\t", row.names=1))
 
 exprs
 class(exprs)
@@ -505,7 +577,8 @@ head(exprs[1:3])
 
 minimalSet <- ExpressionSet(assayData=exprs)
 minimalSet
-pData <- read.table("RAW_data_Florida_Belize/Sequences/pData.txt", row.names=1, header=TRUE, sep="\t")
+
+pData <- read.table("Sequences/pData.txt", row.names=1, header=TRUE, sep="\t")
 pData
 
 all(rownames(pData)==colnames(exprs))
@@ -539,6 +612,24 @@ exprs(males)
 
 A SummarizedExperiment is a Bioconductor data structure designed to store high-throughput genomic data (e.g., RNA-Seq, ChIP-Seq, microarrays) along with associated metadata.
 
+SummarizedExperiment and ExpressionSet are both containers for storing high-throughput genomic data (like RNA-seq or microarray experiments), but SummarizedExperiment is the modern replacement for ExpressionSet.
+Key differences:
+ExpressionSet (older, legacy)
+
+Designed primarily for microarray data
+Stores expression matrix + sample metadata + feature metadata
+Uses basic data structures
+Being phased out
+
+SummarizedExperiment (modern, recommended)
+
+Designed for any genomic assay (RNA-seq, ChIP-seq, methylation, etc.)
+Can store multiple assays in one object (e.g., counts + normalized counts)
+Uses GRanges for feature metadata, linking data directly to genomic coordinates
+More flexible and powerful
+Actively maintained and developed
+
+
 A SummarizedExperiment consists of:
 
 Component	Description	Access Function
@@ -548,7 +639,23 @@ rowRanges (Feature Metadata)	Genomic ranges of genes/transcripts	rowRanges(se)
 metadata (Experiment Info)	Additional study-level data	metadata(se)
 
 
+The rowRanges stores genomic coordinates as GRanges objects, so you can:
+
+Directly overlap your data with genomic features
+Subset by genomic regions
+Integrate with other Bioconductor tools seamlessly
+
 ```{r}
+
+se <- SummarizedExperiment(
+  assays = list(counts = exprs),
+  #rowRanges = gene_ranges, # GRanges with gene locations
+  colData = pData
+)
+
+se
+
+
 
 data(airway, package="airway")
 se <- airway
@@ -570,12 +677,18 @@ metadata(se)
 ?qvalue # proportion of false positive when the test is positive ; compare to Bonferoni and FDR
 
 data(hedenfalk)
+
+# Method 1: q-values (less conservative, controls False Discovery Rate)
 qvalues <- qvalue(hedenfalk$p, fdr.level=0.05, method="bootstrap")$q
 qvalues
 
+# Method 2: Bonferroni correction (very conservative)
 bonferroni <- p.adjust(hedenfalk$p, method="bonferroni")
+
+# Method 3: FDR/Benjamini-Hochberg (moderately conservative)
 fdr <- p.adjust(hedenfalk$p, method="fdr")
 
+# Plot all three methods for comparison
 plot(hedenfalk$p,qvalues,pch=19,ylim=c(0,1),
      xlab="raw P-values",ylab="adjusted P-values")
 points(hedenfalk$p,bonferroni,pch=19,col="red")
@@ -583,6 +696,92 @@ points(hedenfalk$p,fdr,pch=19,col="blue")
 legend("bottomright",legend=c("q-value","FDR (BH)","Bonferroni"),
        fill=c("black","blue","red"))
 ```
+
+
+
+# 3° Exercice
+
+Integrated Exercise: Using DNAString, GRanges, and GTF in Genomic Analysis
+Objective: Combine DNA sequence (DNAString), genomic intervals (GRanges), and gene annotations (GTF) to extract and analyze exonic sequences from a gene.
+
+Answer these questions:
+
+- what is the total number of nucleotides in the gene GRID2 from Kryptolebias marmoratus ?
+- how many exons are there in GRID2 ?
+- for the valid exons (those within the valid boundaries), how many CpG dinucleotides ?
+- what is the GC content of these valid exons ?
+
+
+```{r}
+
+## Step 1: Load Required Libraries ----
+
+
+## Step 2: Load the GTF File and Extract Exon Coordinates ----
+
+# Filter for exons only
+
+## Step 3: Load the GRID2 Genomic Sequence ----
+
+## Step 4: Extract GRID2 Exons ----
+# Filter exons for GRID2 gene only
+
+## Step 5: Adjust Coordinates to Match the FASTA Sequence ----
+# The GTF coordinates are genomic (chromosome-based), but our FASTA contains
+# just the GRID2 gene region. We need to convert to gene-relative coordinates.
+
+# Get the gene entry to find the gene start position
+gene_grid2 <- subset(gtf, type == "gene" & gene == "grid2")
+gene_start <- start(gene_grid2)
+
+# Convert exon coordinates to be relative to gene start (1-based)
+# Create new ranges relative to the gene sequence
+exons_grid2_relative <- GRanges(
+  seqnames = "grid2",  # Match the name in our FASTA
+  ranges = IRanges(
+    start = start(exons_grid2) - gene_start + 1,
+    end = end(exons_grid2) - gene_start + 1
+  ),
+  strand = strand(exons_grid2)
+)
+
+## Filter to keep only valid exons ----
+valid_exons <- exons_grid2_relative[
+  start(exons_grid2_relative) >= 1 & 
+  end(exons_grid2_relative) <= width(grid2)
+]
+
+cat("\nAfter filtering:\n")
+cat("Valid exons:", length(valid_exons), "out of", length(exons_grid2), "\n")
+
+# Verify all are within bounds
+all(start(valid_exons) >= 1 & end(valid_exons) <= width(grid2))
+
+
+## Step 6: Extract Exon Sequences ----
+# Ensure sequence names match
+
+# Extract sequences
+
+
+## Step 7: Count CpG Dinucleotides ----
+
+# Concatenate all exons and count total CpGs
+all_exons_concatenated <- unlist(exon_sequences)
+
+
+## Step 8 : Additional Analyses ----
+# Calculate nucleotide frequencies
+
+# Calculate GC content
+
+# Save exon sequences to file
+names(exon_sequences) <- paste0("GRID2_exon_", seq_along(exon_sequences))
+writeXStringSet(exon_sequences, "grid2_exons.fa")
+
+```
+
+
 
 
 ```{r}
