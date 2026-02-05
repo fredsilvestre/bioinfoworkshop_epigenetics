@@ -1,5 +1,5 @@
 ---
-title: "DNA methylation workflow - workshop 2025 part2"
+title: "DNA methylation workflow - workshop 2026 part2"
 author: "Frédéric Silvestre"
 date: "04/02/2026"
 output:
