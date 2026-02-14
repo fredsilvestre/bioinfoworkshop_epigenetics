@@ -46,7 +46,7 @@ rm(list = ls())
 
 bioc_packages <- c("GenomicRanges", "GenomeInfoDb", "IRanges", "Biostrings", "BSgenome", "AnnotationHub", "GenomicFeatures", "SGSeq", "qvalue", "pwalign", "methylKit", "ShortRead","genomation", "remotes", "txdbmaker", "fastqcr", "Rqc", "QuasR", "methylKit")  
 
-cran_packages <- c("knitr","factoextra", "gridExtra", "ggplot2", "psych", "diptest", "MASS", "pheatmap")
+cran_packages <- c("knitr","factoextra", "gridExtra", "ggplot2", "psych", "diptest", "MASS", "pheatmap", "dplyr")
 
 
 for (pkg in bioc_packages) {
