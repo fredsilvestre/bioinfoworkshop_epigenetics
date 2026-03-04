@@ -1,0 +1,17 @@
+For this assignment, you are requested to make a RMD file in which you are comparing the differentially methylated CpGs (DMCs) between EPP and TC populations of the mangrove rivulus liver.
+You have to answer the following question: 
+- what is the range of the total number of CpGs among all samples ?
+- what is the coverage value of the percentile 99.9% when taking all CpGs from sample TC liver 2 into account ?
+- what is the number of CpGs common in the 6 samples ?
+- How many CpG have you found differentially methylated between the 2 populations ? Justify the different chosen parameters in methylKit (don’t use covariate).
+- What is the highest qvalue found ?
+- what is the percentage of significant CpG located in promoter region ?
+- how many unique genes have you identified ?
+- choose one CpG and explain why your finding is interesting (including its annotation) ?
+
+The liver data are located in the file “exercise” of the studentpack. 
+Start the analysis with the .txt files.
+ID of fish from TC (Twin Cayes in Belize):
+-  Liver: 2, 4, 5
+ID of fish from EPP EPP (Emerson Point Preserve in Florida):
+- Liver: 69, 71, 72
